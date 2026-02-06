@@ -32,4 +32,11 @@
 - **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后在 GitCode Pages 中将 Source 设为仓库根目录或 `web-viewer` 目录，即可在线预览。
 - **本地预览**：运行 `web-viewer/start_preview.bat` 即可在本地 Edge 浏览器中预览。
 
+#### threejs 在线同款页面（推荐）
+
+仓库内也包含 GitHub Pages 同款的 `threejs` 页面：
+
+- **本地预览（Edge）**：运行 `threejs/start_preview.bat`
+- **手动启动**：在仓库根目录执行 `python threejs/serve.py 4173`，再打开 `http://localhost:4173/threejs/index.html?model=1`
+
 
