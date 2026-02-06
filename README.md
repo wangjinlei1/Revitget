@@ -2,7 +2,7 @@
 
 #### 介绍
 
-这是一个基于MIT开源协议的revit导出gltf的开源库，支持revit2020~revit2023，项目依赖于revit，通用构件的合并以及C#对draco算法库的封装，拥有极快的导出速度和极高的压缩率。
+这是一个revit导出gltf的开源库，支持revit2020~revit2023，项目依赖于revit，通用构件的合并以及C#对draco算法库的封装，拥有极快的导出速度和极高的压缩率。
 
 **在线查看案例：** https://lei112.gitcode.host/Revitget/web-viewer/
 
@@ -36,10 +36,4 @@
 - **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后部署该文件夹到 GitCode Pages 即可在线预览。
 - **本地预览**：运行 `web-viewer/start_preview.bat` 即可在本地 Edge 浏览器中预览。
 
-#### 关于
 
-如果不懂，欢迎加入QQ群：835368069
-
-包括BIM开发，Cad开发，threejs开发，python，webAssembly等等的。
-
-大家喜欢可以加群一起卷起来！！卷卷卷卷！！！
