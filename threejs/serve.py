@@ -25,6 +25,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         "": "application/octet-stream",
     }
 
+    def guess_type(self, path):
+        lowered = path.lower()
+        if lowered.endswith(".js") or lowered.endswith(".mjs"):
+            return "application/javascript"
+        if lowered.endswith(".wasm"):
+            return "application/wasm"
+        if lowered.endswith(".json"):
+            return "application/json"
+        guessed, _ = mimetypes.guess_type(path)
+        return guessed or "application/octet-stream"
+
 with socketserver.TCPServer(("", port), Handler) as httpd:
     print(f"Serving on http://localhost:{port}/threejs/index.html?model=1")
     httpd.serve_forever()
