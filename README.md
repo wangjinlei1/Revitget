@@ -6,9 +6,9 @@
 
 **在线查看案例：**
 
-- 如果 GitCode Pages 的 Source 选择的是仓库根目录：`https://lei112.gitcode.host/Revitget/`（会自动跳转到 `/web-viewer/`）
-- 如果 GitCode Pages 的 Source 选择的是仓库根目录，也可以直接访问：`https://lei112.gitcode.host/Revitget/web-viewer/`
-- 如果 GitCode Pages 的 Source 选择的是 `web-viewer` 目录：请访问 `https://lei112.gitcode.host/Revitget/`（此模式下不要带 `/web-viewer/`）
+- 如果 GitCode Pages 的 Source 选择的是仓库根目录（会自动跳转到 `/web-viewer/`）：[打开在线查看](https://lei112.gitcode.host/Revitget/)
+- 如果 GitCode Pages 的 Source 选择的是仓库根目录，也可以直接访问：[打开 /web-viewer/](https://lei112.gitcode.host/Revitget/web-viewer/)
+- 如果 GitCode Pages 的 Source 选择的是 `web-viewer` 目录（此模式不要带 `/web-viewer/`）：[打开在线查看](https://lei112.gitcode.host/Revitget/)
 
 ![image](https://github.com/cowboy1997/Revitget/blob/main/test.png)
 
