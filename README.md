@@ -4,11 +4,9 @@
 
 这是一个基于MIT开源协议的revit导出gltf的开源库，支持revit2020~revit2023，项目依赖于revit，通用构件的合并以及C#对draco算法库的封装，拥有极快的导出速度和极高的压缩率。
 
-在线查看案例：https://cowboy1997.github.io/Revitget/threejs/main
+**在线查看案例：** https://lei112.gitcode.host/Revitget/web-viewer/
 
 ![image](https://github.com/cowboy1997/Revitget/blob/main/test.png)
-
-
 
 #### 支持
 
@@ -26,7 +24,7 @@
 
 #### 安装教程
 
-1、直接下载编译好的安装包https://github.com/cowboy1997/Revitget/releases/download/Revitget/Setup.msi
+1、直接下载编译好的安装包（请前往发行版页面下载）
 
 2、或者打开sln编译Revitget模块（依赖RevitAPI、RevitAPIUI、Newtonsoft）。如果你想重新编译修改DracoNet需要重新引入draco的文件头和静态库
 
@@ -35,7 +33,7 @@
 本项目现已包含一个完整复刻的 Web 查看器，位于 `web-viewer` 目录下。
 
 - **功能**：支持加载 GLB 模型、360度旋转、缩放、HDR 环境光照。
-- **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后部署该文件夹到 GitHub Pages 即可在线预览。
+- **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后部署该文件夹到 GitCode Pages 即可在线预览。
 - **本地预览**：运行 `web-viewer/start_preview.bat` 即可在本地 Edge 浏览器中预览。
 
 #### 关于
