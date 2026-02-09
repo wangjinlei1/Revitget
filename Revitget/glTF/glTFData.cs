@@ -52,7 +52,7 @@ namespace Revitget.glTF
 
     public class glTFVersion
     {
-        public string generator = "exportGLTF by:https://github.com/cowboy1997/Revitget";
+        public string generator = "exportGLTF by:https://github.com/wangjinlei1/Revitget";
         public string version = "2.0";
         public Dictionary<string, object> extras { get; set; }
         public Dictionary<string, object> extensions { get; set; }

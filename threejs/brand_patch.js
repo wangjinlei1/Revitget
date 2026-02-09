@@ -6,6 +6,7 @@ function patchBrand() {
     return (
       text === "Cowboy1997" ||
       href.includes("github.com/cowboy1997/revitget") ||
+      href.includes("github.com/wangjinlei1/revitget") ||
       href.includes("gitcode.com") && text === "Cowboy1997"
     );
   });
@@ -13,7 +14,7 @@ function patchBrand() {
   if (!target) return false;
 
   target.textContent = "Revitget";
-  target.setAttribute("href", "");
+  target.setAttribute("href", "https://github.com/wangjinlei1/Revitget");
   target.addEventListener("click", (e) => e.preventDefault());
   return true;
 }
@@ -23,4 +24,3 @@ const timer = setInterval(() => {
   tries += 1;
   if (patchBrand() || tries > 300) clearInterval(timer);
 }, 100);
-

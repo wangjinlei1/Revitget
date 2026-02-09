@@ -6,6 +6,6 @@
         <FullClassName>Revitget.App</FullClassName>
         <AddInId>ED2327C7-7A24-2BB4-1EE2-1EEF5A367576</AddInId>
         <VendorId>ADSK</VendorId>
-        <VendorDescription>cowboy, https://github.com/cowboy1997/Revitget/</VendorDescription>
+        <VendorDescription>cowboy, https://github.com/wangjinlei1/Revitget</VendorDescription>
     </AddIn>
 </RevitAddIns>
