@@ -1,7 +1,8 @@
 param(
   [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
   [string]$OutZip = "",
-  [switch]$IncludeWebViewer
+  [switch]$IncludeWebViewer,
+  [switch]$IncludeSamples
 )
 
 Set-StrictMode -Version Latest
@@ -18,14 +19,60 @@ $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("edgeone-pages-" + [Syst
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
 try {
-  Copy-Item -Force (Join-Path $RepoRoot "index.html") (Join-Path $tempDir "index.html")
+  $rootIndexSource = Join-Path $RepoRoot "index.html"
+  if (-not (Test-Path $rootIndexSource)) {
+    throw ("Missing file: " + $rootIndexSource)
+  }
+
+  $rootIndexOut = Join-Path $tempDir "index.html"
+  $rootIndexContent = Get-Content -Raw -Encoding UTF8 $rootIndexSource
+  if ($IncludeSamples) {
+    Set-Content -Encoding UTF8 -NoNewline -Path $rootIndexOut -Value $rootIndexContent
+  } else {
+    $patched = $rootIndexContent -replace 'content="0; url=\./threejs/main\.html"', 'content="0; url=./threejs/index.html"'
+    Set-Content -Encoding UTF8 -NoNewline -Path $rootIndexOut -Value $patched
+  }
 
   $noJekyll = Join-Path $RepoRoot ".nojekyll"
   if (Test-Path $noJekyll) {
     Copy-Item -Force $noJekyll (Join-Path $tempDir ".nojekyll")
   }
 
-  Copy-Item -Recurse -Force (Join-Path $RepoRoot "threejs") (Join-Path $tempDir "threejs")
+  $threeSource = Join-Path $RepoRoot "threejs"
+  $threeOut = Join-Path $tempDir "threejs"
+
+  if ($IncludeSamples) {
+    Copy-Item -Recurse -Force $threeSource $threeOut
+  } else {
+    New-Item -ItemType Directory -Force -Path $threeOut | Out-Null
+
+    $threeFiles = @(
+      "index.html",
+      "controls_patch.js",
+      "brand_patch.js",
+      "vite.svg",
+      "no.png"
+    )
+
+    foreach ($rel in $threeFiles) {
+      $src = Join-Path $threeSource $rel
+      if (Test-Path $src) {
+        Copy-Item -Force $src (Join-Path $threeOut $rel)
+      }
+    }
+
+    $threeDirs = @(
+      "assets",
+      "lib"
+    )
+
+    foreach ($relDir in $threeDirs) {
+      $srcDir = Join-Path $threeSource $relDir
+      if (Test-Path $srcDir) {
+        Copy-Item -Recurse -Force $srcDir (Join-Path $threeOut $relDir)
+      }
+    }
+  }
 
   if ($IncludeWebViewer) {
     Copy-Item -Recurse -Force (Join-Path $RepoRoot "web-viewer") (Join-Path $tempDir "web-viewer")
