@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using Revitget.glTF;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 
 namespace Revitget
 {
@@ -44,13 +45,35 @@ namespace Revitget
                 stopWatch.Stop();
 
 
+                var outputPath = setting.fileName ?? "";
+                var outputDir = "";
+                try
+                {
+                    outputDir = Path.GetDirectoryName(outputPath) ?? "";
+                }
+                catch
+                {
+                    outputDir = "";
+                }
+
                 var mainDialog = new TaskDialog("Revitget")
                 {
-                    MainContent = "success! time is:" + stopWatch.Elapsed.TotalSeconds + "s" + "\n" +
-                     "<a href=\"https://cowboy1997.github.io/Revitget/threejs/index?\">" + "open your glb model</a>"
+                    MainContent = "导出成功！用时：" + stopWatch.Elapsed.TotalSeconds.ToString("0.00") + " 秒\n\n" +
+                                  "文件路径：\n" + outputPath + "\n\n" +
+                                  "在线查看链接：（预留）"
                 };
-                ;
-                mainDialog.Show();
+                if (!string.IsNullOrWhiteSpace(outputDir) && Directory.Exists(outputDir))
+                {
+                    mainDialog.MainContent += "\n\n点击下方按钮可打开文件夹：";
+                    mainDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "打开文件夹");
+                }
+                mainDialog.CommonButtons = TaskDialogCommonButtons.Close;
+
+                var dialogResult = mainDialog.Show();
+                if (dialogResult == TaskDialogResult.CommandLink1)
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", "\"" + outputDir + "\""));
+                }
 
             }
             return Result.Succeeded;

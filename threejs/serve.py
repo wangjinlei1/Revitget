@@ -36,7 +36,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         guessed, _ = mimetypes.guess_type(path)
         return guessed or "application/octet-stream"
 
-with socketserver.TCPServer(("", port), Handler) as httpd:
-    print(f"Serving on http://localhost:{port}/threejs/index.html?model=1")
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+host = "127.0.0.1"
+with ReusableTCPServer((host, port), Handler) as httpd:
+    print(f"Serving on http://{host}:{port}/threejs/main.html")
     httpd.serve_forever()
 

@@ -4,7 +4,7 @@
 
 这是一个复刻前人基础上做的一个revit导出gltf的开源库，支持revit2020~revit2023。
 
-**在线查看案例：** [打开在线查看](https://lei112.gitcode.host/Revitget/)
+**在线查看案例：** [打开在线查看](https://lei112.gitee.io/Revitget/)
 
 ![image](https://github.com/cowboy1997/Revitget/blob/main/test.png)
 
@@ -29,7 +29,7 @@
 包含一个完整复刻的 Web 查看器，位于 `web-viewer` 目录下。
 
 - **功能**：支持加载 GLB 模型、360度旋转、缩放、HDR 环境光照。
-- **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后在 GitCode Pages 中将 Source 设为仓库根目录或 `web-viewer` 目录，即可在线预览。
+- **使用**：将导出的 GLB 模型放入 `web-viewer/assets/models/`，然后在 Gitee Pages 中将 Source 设为仓库根目录或 `web-viewer` 目录，即可在线预览。
 - **本地预览**：运行 `web-viewer/start_preview.bat` 即可在本地 Edge 浏览器中预览。
 
 #### threejs 在线同款页面（推荐）
@@ -37,6 +37,6 @@
 仓库内也包含 GitHub Pages 同款的 `threejs` 页面：
 
 - **本地预览（Edge）**：运行 `threejs/start_preview.bat`
-- **手动启动**：在仓库根目录执行 `python threejs/serve.py 4173`，再打开 `http://localhost:4173/threejs/index.html?model=1`
+- **手动启动**：在仓库根目录执行 `python threejs/serve.py 4173`，再打开 `http://localhost:4173/threejs/main.html`
 
 

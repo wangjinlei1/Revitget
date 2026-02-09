@@ -10,7 +10,7 @@ echo   Revitget threejs 本地预览 (Edge)
 echo ==========================================
 echo.
 echo 正在启动本地静态服务...
-echo 地址: http://localhost:%PORT%/threejs/index.html?model=1
+echo 地址: http://localhost:%PORT%/threejs/main.html
 echo.
 
 where python >nul 2>nul
@@ -21,9 +21,17 @@ if %ERRORLEVEL% NEQ 0 (
   exit /b 1
 )
 
+netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul
+if %ERRORLEVEL% EQU 0 (
+  echo 端口 %PORT% 已被占用（通常是上一次的服务没关）。
+  echo 请先关闭旧的黑色窗口，或在任务管理器结束 python.exe 后再重试。
+  pause
+  exit /b 1
+)
+
 start "" /b python threejs/serve.py %PORT%
 timeout /t 1 /nobreak >nul
-start "" msedge "http://localhost:%PORT%/threejs/index.html?model=1"
+start "" msedge "http://localhost:%PORT%/threejs/main.html"
 echo.
 echo 若要关闭服务，请关闭本窗口或在任务管理器结束 python.exe。
 pause

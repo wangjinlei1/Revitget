@@ -1,7 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -42,21 +41,15 @@ namespace Revitget
         private void Button_Open(object sender, RoutedEventArgs e)
         {
             SaveFileDialog fd = new SaveFileDialog();
-            fd.Title = "exportGLTF";
+            fd.Title = "导出 glTF";
             //fd.Filter = "gltf文件|*.gltf";
             //fd.Filter = "gltf文件(*.gltf,*.glb)|*.gltf;*.glb";
-            fd.Filter = "glb文件(*.glb)|*.glb|gltf文件(*.gltf)|*.gltf";
-            fd.FileName = "NewProject";
+            fd.Filter = "GLB 文件(*.glb)|*.glb|glTF 文件(*.gltf)|*.gltf";
+            fd.FileName = "新建项目";
             if (fd.ShowDialog() == true)
             {
                 fileName.Text = fd.FileName;
             }
-        }
-
-        private void Hyperlink_Click(object sender, RoutedEventArgs e)
-        {
-            Hyperlink link = sender as Hyperlink;
-            Process.Start(new ProcessStartInfo(link.NavigateUri.AbsoluteUri));
         }
     }
 }
