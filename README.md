@@ -6,8 +6,6 @@
 
 **在线查看案例：** https://wangjinlei1.github.io/Revitget/
 
-![image](https://github.com/cowboy1997/Revitget/blob/main/test.png)
-
 #### 支持
 
 1、支持revit带材质导出GLTF
