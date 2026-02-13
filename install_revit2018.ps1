@@ -2,6 +2,7 @@ param(
   [string]$RevitInstallDir = ""
 )
 
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 

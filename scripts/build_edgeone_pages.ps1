@@ -63,7 +63,9 @@ try {
 
     $threeDirs = @(
       "assets",
-      "lib"
+      "lib",
+      "hdr",
+      "pbr"
     )
 
     foreach ($relDir in $threeDirs) {
@@ -75,7 +77,10 @@ try {
   }
 
   if ($IncludeWebViewer) {
-    Copy-Item -Recurse -Force (Join-Path $RepoRoot "web-viewer") (Join-Path $tempDir "web-viewer")
+    $viewer = Join-Path $RepoRoot "web-viewer"
+    if (Test-Path $viewer) {
+      Copy-Item -Recurse -Force $viewer (Join-Path $tempDir "web-viewer")
+    }
   }
 
   if (Test-Path $OutZip) {

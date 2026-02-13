@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+
 #include <draco/compression/encode.h>
 using namespace draco;
 struct DracoEncoderOptions {

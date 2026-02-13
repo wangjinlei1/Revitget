@@ -33,9 +33,3 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_edgeone_pa
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_edgeone_pages.ps1 -IncludeSamples
 ```
-
-## 可选：同时发布 web-viewer
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_edgeone_pages.ps1 -IncludeWebViewer
-```

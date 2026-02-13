@@ -14,8 +14,7 @@ function patchBrand() {
   if (!target) return false;
 
   target.textContent = "Revitget";
-  target.setAttribute("href", "https://github.com/wangjinlei1/Revitget");
-  target.addEventListener("click", (e) => e.preventDefault());
+  target.setAttribute("href", "../index.html");
   return true;
 }
 

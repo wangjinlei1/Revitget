@@ -1,6 +1,7 @@
 @echo off
 setlocal
 
+
 cd /d "%~dp0"
 
 set "LOG=%~dp0install_revit2018.log"

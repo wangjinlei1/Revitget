@@ -10,7 +10,7 @@ echo   Revitget threejs 本地预览 (Edge)
 echo ==========================================
 echo.
 echo 正在启动本地静态服务...
-echo 地址: http://localhost:%PORT%/threejs/main.html
+echo 地址: http://localhost:%PORT%/index.html
 echo.
 
 where python >nul 2>nul
@@ -31,7 +31,7 @@ if %ERRORLEVEL% EQU 0 (
 
 start "" /b python threejs/serve.py %PORT%
 timeout /t 1 /nobreak >nul
-start "" msedge "http://localhost:%PORT%/threejs/main.html"
+start "" msedge "http://localhost:%PORT%/index.html"
 echo.
 echo 若要关闭服务，请关闭本窗口或在任务管理器结束 python.exe。
 pause

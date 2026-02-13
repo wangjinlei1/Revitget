@@ -41,6 +41,6 @@ class ReusableTCPServer(socketserver.TCPServer):
 
 host = "127.0.0.1"
 with ReusableTCPServer((host, port), Handler) as httpd:
-    print(f"Serving on http://{host}:{port}/threejs/main.html")
+    print(f"Serving on http://{host}:{port}/index.html")
     httpd.serve_forever()
 
