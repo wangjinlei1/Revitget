@@ -27,30 +27,64 @@
     };
   })();
 
+  function applyPageBg(isGlb) {
+    const c = isGlb ? "#f6f8fb" : "";
+    try {
+      if (document && document.documentElement && document.documentElement.style) {
+        document.documentElement.style.backgroundColor = c;
+      }
+    } catch {}
+    try {
+      if (document && document.body && document.body.style) {
+        document.body.style.backgroundColor = c;
+      }
+    } catch {}
+    try {
+      const appEl = document && document.getElementById && document.getElementById("app");
+      if (appEl && appEl.style) appEl.style.backgroundColor = c;
+    } catch {}
+  }
+
   (function patchWebGLClearColor() {
     if (window.__revitget_patched_gl_clearColor) return;
     window.__revitget_patched_gl_clearColor = true;
 
-    function wrapProtoClearColor(Proto) {
-      if (!Proto || typeof Proto.clearColor !== "function") return;
+    function wrapProto(Proto) {
+      if (!Proto) return;
       if (Proto.__revitget_patched_clearColor) return;
       Proto.__revitget_patched_clearColor = true;
-      const orig = Proto.clearColor;
-      Proto.clearColor = function (r, g, b, a) {
-        try {
-          if (window.__revitget_force_glb_light_bg) {
-            return orig.call(this, LIGHT_GL.r, LIGHT_GL.g, LIGHT_GL.b, LIGHT_GL.a);
-          }
-        } catch {}
-        return orig.call(this, r, g, b, a);
-      };
+      const origClearColor = typeof Proto.clearColor === "function" ? Proto.clearColor : null;
+      const origClear = typeof Proto.clear === "function" ? Proto.clear : null;
+      if (origClearColor) {
+        Proto.clearColor = function (r, g, b, a) {
+          try {
+            if (window.__revitget_force_glb_light_bg) {
+              return origClearColor.call(this, LIGHT_GL.r, LIGHT_GL.g, LIGHT_GL.b, LIGHT_GL.a);
+            }
+          } catch {}
+          return origClearColor.call(this, r, g, b, a);
+        };
+      }
+      if (origClear) {
+        Proto.clear = function (mask) {
+          try {
+            if (window.__revitget_force_glb_light_bg) {
+              const bit = this && this.COLOR_BUFFER_BIT;
+              if (bit && (mask & bit)) {
+                if (origClearColor) origClearColor.call(this, LIGHT_GL.r, LIGHT_GL.g, LIGHT_GL.b, LIGHT_GL.a);
+              }
+            }
+          } catch {}
+          return origClear.call(this, mask);
+        };
+      }
     }
 
     try {
-      wrapProtoClearColor(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
+      wrapProto(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
     } catch {}
     try {
-      wrapProtoClearColor(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);
+      wrapProto(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);
     } catch {}
   })();
 
@@ -58,10 +92,7 @@
     const e = String(ext || "").toLowerCase();
     if (e) window.__revitget_last_model_ext = e;
     window.__revitget_force_glb_light_bg = window.__revitget_last_model_ext === "glb";
-    try {
-      if (!document || !document.body || !document.body.style) return;
-      document.body.style.backgroundColor = window.__revitget_force_glb_light_bg ? "#f6f8fb" : "";
-    } catch {}
+    applyPageBg(window.__revitget_force_glb_light_bg);
   }
 
   function tryGet(obj, path) {
