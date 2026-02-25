@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+﻿﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,11 +31,36 @@ namespace Revitget
 
         private void Button_Start(object sender, RoutedEventArgs e)
         {
-            if(fileName.Text!=null)
+            var path = fileName.Text;
+            if (string.IsNullOrWhiteSpace(path))
             {
-                DialogResult = true;
-                Close();
+                MessageBox.Show("请选择导出文件路径（.gltf 或 .glb）。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
+
+            var ext = System.IO.Path.GetExtension(path);
+            if (string.IsNullOrWhiteSpace(ext) || (ext.ToLower() != ".gltf" && ext.ToLower() != ".glb"))
+            {
+                MessageBox.Show("导出文件扩展名必须是 .gltf 或 .glb。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var dir = System.IO.Path.GetDirectoryName(path);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    System.IO.Directory.CreateDirectory(dir);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("导出路径不可用：\n" + ex.Message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            DialogResult = true;
+            Close();
         }
 
         private void Button_Open(object sender, RoutedEventArgs e)
