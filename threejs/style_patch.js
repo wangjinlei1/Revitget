@@ -4,6 +4,8 @@
   const DARK_BG_COLOR = 0x050713;
   const objectUrlToExt = new Map();
   const LIGHT_GL = { r: 246 / 255, g: 248 / 255, b: 251 / 255, a: 1 };
+  if (typeof window.__revitget_last_model_ext !== "string") window.__revitget_last_model_ext = "";
+  if (typeof window.__revitget_force_glb_light_bg !== "boolean") window.__revitget_force_glb_light_bg = false;
 
   (function patchCreateObjectURL() {
     const U = window.URL || window.webkitURL;
@@ -52,6 +54,16 @@
     } catch {}
   })();
 
+  function setActiveExt(ext) {
+    const e = String(ext || "").toLowerCase();
+    if (e) window.__revitget_last_model_ext = e;
+    window.__revitget_force_glb_light_bg = window.__revitget_last_model_ext === "glb";
+    try {
+      if (!document || !document.body || !document.body.style) return;
+      document.body.style.backgroundColor = window.__revitget_force_glb_light_bg ? "#f6f8fb" : "";
+    } catch {}
+  }
+
   function tryGet(obj, path) {
     let cur = obj;
     for (const key of path) {
@@ -95,9 +107,7 @@
           cfg && cfg.file && cfg.file.name,
           cfg && cfg.blob && cfg.blob.name
         );
-        if (ext) {
-          window.__revitget_last_model_ext = ext;
-        }
+        if (ext) setActiveExt(ext);
       } catch {}
       return original(cfg, ...rest);
     };
@@ -126,13 +136,13 @@
         const el = t.closest ? t.closest("button,a") : null;
         const text = String((el && el.textContent) || "").trim().toLowerCase();
         if (!text) return;
-        if (text.includes("glb")) window.__revitget_last_model_ext = "glb";
-        else if (text.includes("gltf")) window.__revitget_last_model_ext = "gltf";
-        else if (text.includes("ifc")) window.__revitget_last_model_ext = "ifc";
-        else if (text.includes("fbx")) window.__revitget_last_model_ext = "fbx";
-        else if (text.includes("rhino") || text.includes("3dm")) window.__revitget_last_model_ext = "3dm";
-        else if (text.includes("dwg") || text.includes("dxf")) window.__revitget_last_model_ext = "dwg";
-        else if (text.includes("3dtiles") || text.includes("tiles")) window.__revitget_last_model_ext = "tiles";
+        if (text.includes("glb")) setActiveExt("glb");
+        else if (text.includes("gltf")) setActiveExt("gltf");
+        else if (text.includes("ifc")) setActiveExt("ifc");
+        else if (text.includes("fbx")) setActiveExt("fbx");
+        else if (text.includes("rhino") || text.includes("3dm")) setActiveExt("3dm");
+        else if (text.includes("dwg") || text.includes("dxf")) setActiveExt("dwg");
+        else if (text.includes("3dtiles") || text.includes("tiles")) setActiveExt("tiles");
       },
       { passive: true, capture: true }
     );
@@ -148,7 +158,7 @@
         if (!t || !t.files || !t.files.length) return;
         const file = t.files[0];
         const ext = getUrlExt(file && file.name);
-        if (ext) window.__revitget_last_model_ext = ext;
+        if (ext) setActiveExt(ext);
       },
       { passive: true, capture: true }
     );
@@ -160,7 +170,7 @@
           if (!dt || !dt.files || !dt.files.length) return;
           const file = dt.files[0];
           const ext = getUrlExt(file && file.name);
-          if (ext) window.__revitget_last_model_ext = ext;
+          if (ext) setActiveExt(ext);
         } catch {}
       },
       { passive: true, capture: true }
@@ -321,11 +331,11 @@
     if (!ext) {
       ext = getActiveExt(app);
       if (ext) {
-        window.__revitget_last_model_ext = ext;
+        setActiveExt(ext);
       }
     }
     const isGlb = ext === "glb";
-    window.__revitget_force_glb_light_bg = isGlb;
+    setActiveExt(isGlb ? "glb" : ext);
 
     if (renderer.__revitget_orig_clear === undefined) {
       try {
@@ -406,5 +416,7 @@
   setInterval(() => {
     applyStyle();
   }, 800);
+  patchFormatButtons();
+  patchFileInputs();
   applyStyle();
 })();
