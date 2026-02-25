@@ -452,46 +452,60 @@
       <div class="section">
         <div class="section-head">
           <h3>支持加载格式</h3>
-          <p class="hint">共 5 类</p>
+          <p class="hint">与查看器一致</p>
         </div>
-        <ul class="formats">
-          <li class="fmt gltf">
-            <div class="t">
-              <div class="name"><span class="ico"></span>glTF / GLB</div>
-              <div class="ext">.gltf / .glb</div>
-            </div>
-            <p class="desc">推荐格式，适合 Revit 导出后的在线预览与分享。</p>
-          </li>
-          <li class="fmt ifc">
-            <div class="t">
-              <div class="name"><span class="ico"></span>IFC</div>
-              <div class="ext">.ifc</div>
-            </div>
-            <p class="desc">BIM 交换格式，可用于快速查看与校验。</p>
-          </li>
-          <li class="fmt fbx">
-            <div class="t">
-              <div class="name"><span class="ico"></span>FBX</div>
-              <div class="ext">.fbx</div>
-            </div>
-            <p class="desc">常见 DCC 格式，适合动画/资产导入。</p>
-          </li>
-          <li class="fmt tiles">
-            <div class="t">
-              <div class="name"><span class="ico"></span>3D Tiles</div>
-              <div class="ext">tileset.json</div>
-            </div>
-            <p class="desc">大场景分块加载（需要完整 tileset 资源）。</p>
-          </li>
-          <li class="fmt rhino">
-            <div class="t">
-              <div class="name"><span class="ico"></span>Rhino 3DM</div>
-              <div class="ext">.3dm</div>
-            </div>
-            <p class="desc">Rhino 模型格式，适合工业设计协作。</p>
-          </li>
-        </ul>
+        <ul class="formats" id="formats"></ul>
       </div>
     </div>
+    <script>
+      (function () {
+        function esc(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        var el = document.getElementById("formats");
+        if (!el) return;
+
+        fetch("./threejs/supported_formats.json", { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("load supported formats failed");
+            return r.json();
+          })
+          .then(function (list) {
+            if (!Array.isArray(list)) throw new Error("invalid format list");
+            el.innerHTML = list
+              .map(function (it) {
+                var key = esc(it.key || "gltf");
+                var name = esc(it.name || "");
+                var ext = esc(it.ext || "");
+                var desc = esc(it.desc || "");
+                return (
+                  '<li class="fmt ' +
+                  key +
+                  '">' +
+                  '<div class="t">' +
+                  '<div class="name"><span class="ico"></span>' +
+                  name +
+                  "</div>" +
+                  '<div class="ext">' +
+                  ext +
+                  "</div>" +
+                  "</div>" +
+                  '<p class="desc">' +
+                  desc +
+                  "</p>" +
+                  "</li>"
+                );
+              })
+              .join("");
+          })
+          .catch(function () {});
+      })();
+    </script>
   </body>
 </html>

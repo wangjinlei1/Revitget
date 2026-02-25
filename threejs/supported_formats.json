@@ -1,0 +1,38 @@
+[
+  {
+    "key": "gltf",
+    "name": "glTF / GLB",
+    "ext": ".gltf / .glb",
+    "desc": "推荐格式，适合 Revit 导出后的快速在线预览与分享。"
+  },
+  {
+    "key": "cad",
+    "name": "DWG / DXF",
+    "ext": ".dwg / .dxf",
+    "desc": "二维 CAD 图纸（DWG 会先转换为 DXF 再加载）。"
+  },
+  {
+    "key": "ifc",
+    "name": "IFC",
+    "ext": ".ifc",
+    "desc": "BIM 交换格式，可用于快速查看与校验。"
+  },
+  {
+    "key": "rhino",
+    "name": "Rhino 3DM",
+    "ext": ".3dm",
+    "desc": "Rhino 模型格式，适合工业设计协作。"
+  },
+  {
+    "key": "fbx",
+    "name": "FBX",
+    "ext": ".fbx",
+    "desc": "常见 DCC 格式，适合动画/资产导入。"
+  },
+  {
+    "key": "tiles",
+    "name": "3D Tiles",
+    "ext": "tileset.json",
+    "desc": "大场景分块加载（需要完整 tileset 资源）。"
+  }
+]
