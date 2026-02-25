@@ -357,13 +357,13 @@
       app.setEmviormentParameter("roughnessPower", 1.0);
     } catch {}
     try {
-      app.setEmviormentParameter("radianceIntensity", 0.7);
+      app.setEmviormentParameter("radianceIntensity", 0.5);
     } catch {}
     try {
-      app.setEmviormentParameter("envPower", 0.8);
+      app.setEmviormentParameter("envPower", 0.6);
     } catch {}
     try {
-      app.setEmviormentParameter("smoothingPower", 0.7);
+      app.setEmviormentParameter("smoothingPower", 0.6);
     } catch {}
   }
 
@@ -405,7 +405,12 @@
       materialOrig.set(mat, {
         roughness: mat.roughness,
         metalness: mat.metalness,
-        envMapIntensity: mat.envMapIntensity
+        envMapIntensity: mat.envMapIntensity,
+        clearcoat: mat.clearcoat,
+        clearcoatRoughness: mat.clearcoatRoughness,
+        sheen: mat.sheen,
+        sheenRoughness: mat.sheenRoughness,
+        specularIntensity: mat.specularIntensity
       });
     }
     const type = classifyMaterial(mat);
@@ -415,8 +420,13 @@
 
     if (type === "concrete") {
       mat.metalness = 0;
-      mat.roughness = Math.max(roughness, 0.92);
-      mat.envMapIntensity = Math.min(env, 0.35);
+      mat.roughness = 1.0;
+      mat.envMapIntensity = Math.min(env, 0.12);
+      if ("clearcoat" in mat) mat.clearcoat = 0;
+      if ("clearcoatRoughness" in mat) mat.clearcoatRoughness = 1.0;
+      if ("sheen" in mat) mat.sheen = 0;
+      if ("sheenRoughness" in mat) mat.sheenRoughness = 1.0;
+      if ("specularIntensity" in mat) mat.specularIntensity = Math.min(typeof mat.specularIntensity === "number" ? mat.specularIntensity : 1, 0.2);
     } else if (type === "metal" || metalness > 0.6) {
       mat.metalness = Math.max(metalness, 0.9);
       mat.roughness = Math.min(roughness, 0.35);
@@ -463,6 +473,11 @@
         mat.roughness = o.roughness;
         mat.metalness = o.metalness;
         mat.envMapIntensity = o.envMapIntensity;
+        if ("clearcoat" in mat) mat.clearcoat = o.clearcoat;
+        if ("clearcoatRoughness" in mat) mat.clearcoatRoughness = o.clearcoatRoughness;
+        if ("sheen" in mat) mat.sheen = o.sheen;
+        if ("sheenRoughness" in mat) mat.sheenRoughness = o.sheenRoughness;
+        if ("specularIntensity" in mat) mat.specularIntensity = o.specularIntensity;
         mat.needsUpdate = true;
       } catch {}
     });
@@ -536,7 +551,7 @@
           } catch {}
         }
         if (renderer.__revitget_orig_exposure !== null && typeof renderer.toneMappingExposure === "number") {
-          renderer.toneMappingExposure = Math.max(renderer.__revitget_orig_exposure, 1.0) * 1.15;
+          renderer.toneMappingExposure = renderer.__revitget_orig_exposure;
         }
         renderer.__revitget_glb_applied = true;
       } else if (renderer.__revitget_glb_applied) {
