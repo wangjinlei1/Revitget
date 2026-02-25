@@ -3,6 +3,7 @@
   const LIGHT_BG_COLOR = 0xf6f8fb;
   const DARK_BG_COLOR = 0x050713;
   const objectUrlToExt = new Map();
+  const LIGHT_GL = { r: 246 / 255, g: 248 / 255, b: 251 / 255, a: 1 };
 
   (function patchCreateObjectURL() {
     const U = window.URL || window.webkitURL;
@@ -22,6 +23,33 @@
       } catch {}
       return url;
     };
+  })();
+
+  (function patchWebGLClearColor() {
+    if (window.__revitget_patched_gl_clearColor) return;
+    window.__revitget_patched_gl_clearColor = true;
+
+    function wrapProtoClearColor(Proto) {
+      if (!Proto || typeof Proto.clearColor !== "function") return;
+      if (Proto.__revitget_patched_clearColor) return;
+      Proto.__revitget_patched_clearColor = true;
+      const orig = Proto.clearColor;
+      Proto.clearColor = function (r, g, b, a) {
+        try {
+          if (window.__revitget_force_glb_light_bg) {
+            return orig.call(this, LIGHT_GL.r, LIGHT_GL.g, LIGHT_GL.b, LIGHT_GL.a);
+          }
+        } catch {}
+        return orig.call(this, r, g, b, a);
+      };
+    }
+
+    try {
+      wrapProtoClearColor(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
+    } catch {}
+    try {
+      wrapProtoClearColor(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);
+    } catch {}
   })();
 
   function tryGet(obj, path) {
@@ -105,6 +133,35 @@
         else if (text.includes("rhino") || text.includes("3dm")) window.__revitget_last_model_ext = "3dm";
         else if (text.includes("dwg") || text.includes("dxf")) window.__revitget_last_model_ext = "dwg";
         else if (text.includes("3dtiles") || text.includes("tiles")) window.__revitget_last_model_ext = "tiles";
+      },
+      { passive: true, capture: true }
+    );
+  }
+
+  function patchFileInputs() {
+    if (window.__revitget_file_input_patched) return;
+    window.__revitget_file_input_patched = true;
+    document.addEventListener(
+      "change",
+      (e) => {
+        const t = e.target;
+        if (!t || !t.files || !t.files.length) return;
+        const file = t.files[0];
+        const ext = getUrlExt(file && file.name);
+        if (ext) window.__revitget_last_model_ext = ext;
+      },
+      { passive: true, capture: true }
+    );
+    document.addEventListener(
+      "drop",
+      (e) => {
+        try {
+          const dt = e.dataTransfer;
+          if (!dt || !dt.files || !dt.files.length) return;
+          const file = dt.files[0];
+          const ext = getUrlExt(file && file.name);
+          if (ext) window.__revitget_last_model_ext = ext;
+        } catch {}
       },
       { passive: true, capture: true }
     );
@@ -257,6 +314,7 @@
     const scene = view.scene || view._scene || null;
 
     patchFormatButtons();
+    patchFileInputs();
     ensureRendererGuard(renderer);
 
     let ext = String(window.__revitget_last_model_ext || "").toLowerCase();
@@ -267,14 +325,12 @@
       }
     }
     const isGlb = ext === "glb";
+    window.__revitget_force_glb_light_bg = isGlb;
 
     if (renderer.__revitget_orig_clear === undefined) {
       try {
-        const THREE = root.THREE;
-        if (THREE && typeof THREE.Color === "function" && typeof renderer.getClearColor === "function") {
-          const c = new THREE.Color();
-          renderer.getClearColor(c);
-          renderer.__revitget_orig_clear = c.getHex();
+        if (typeof renderer.getClearColor === "function" && typeof renderer.getClearAlpha === "function") {
+          renderer.__revitget_orig_clear = null;
         } else {
           renderer.__revitget_orig_clear = null;
         }
@@ -297,6 +353,13 @@
             canvas.style.backgroundColor = "#f6f8fb";
           }
         } catch {}
+        try {
+          const host = renderer.domElement && renderer.domElement.parentElement;
+          if (host && host.style) host.style.backgroundColor = "#f6f8fb";
+        } catch {}
+        try {
+          if (document.body && document.body.style) document.body.style.backgroundColor = "#f6f8fb";
+        } catch {}
         if (scene) {
           try {
             if (scene.background && scene.background.isColor && typeof scene.background.setHex === "function") {
@@ -317,6 +380,13 @@
           if (canvas && canvas.style) {
             canvas.style.backgroundColor = "";
           }
+        } catch {}
+        try {
+          const host = renderer.domElement && renderer.domElement.parentElement;
+          if (host && host.style) host.style.backgroundColor = "";
+        } catch {}
+        try {
+          if (document.body && document.body.style) document.body.style.backgroundColor = "";
         } catch {}
         if (scene && scene.__revitget_orig_bg !== undefined) {
           try {
