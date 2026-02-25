@@ -125,20 +125,136 @@
     };
   }
 
+  function isAppCandidate(o) {
+    if (!o || typeof o !== "object") return false;
+    if (typeof o.loadModel !== "function") return false;
+    let v = null;
+    try {
+      v = o.view || o._view || o.viewer || null;
+    } catch {
+      v = null;
+    }
+    if (!v || typeof v !== "object") return false;
+    try {
+      const r = v.renderer || v._renderer || null;
+      const s = v.scene || v._scene || null;
+      return !!(r || s);
+    } catch {
+      return false;
+    }
+  }
+
+  function deepFind(root, predicate, maxDepth = 7, maxNodes = 4000) {
+    if (!root || typeof root !== "object") return null;
+    const visited = new WeakSet();
+    const queue = [{ value: root, depth: 0 }];
+    let nodes = 0;
+    while (queue.length) {
+      const cur = queue.shift();
+      const value = cur.value;
+      const depth = cur.depth;
+      if (!value || typeof value !== "object") continue;
+      if (visited.has(value)) continue;
+      visited.add(value);
+      try {
+        if (predicate(value)) return value;
+      } catch {}
+      if (depth >= maxDepth) continue;
+      nodes += 1;
+      if (nodes > maxNodes) return null;
+      let keys = [];
+      try {
+        keys = Object.getOwnPropertyNames(value);
+      } catch {
+        keys = [];
+      }
+      for (const k of keys) {
+        let child = null;
+        try {
+          child = value[k];
+        } catch {
+          continue;
+        }
+        if (child && typeof child === "object") {
+          queue.push({ value: child, depth: depth + 1 });
+        }
+      }
+    }
+    return null;
+  }
+
+  function getVueProxy() {
+    const el = document.getElementById("app");
+    if (!el) return null;
+    try {
+      const vueApp = el.__vue_app__ || el.__vue_app || null;
+      const inst = vueApp && (vueApp._instance || vueApp._container?._vnode?.component || null);
+      const proxy = inst && inst.proxy;
+      if (proxy) return proxy;
+    } catch {}
+    try {
+      const pc = el.__vueParentComponent || null;
+      const proxy = pc && pc.proxy;
+      if (proxy) return proxy;
+    } catch {}
+    return null;
+  }
+
+  function resolveApp() {
+    if (window.__revitget_app && isAppCandidate(window.__revitget_app)) return window.__revitget_app;
+    const direct = tryGet(window, ["app"]);
+    if (direct && isAppCandidate(direct)) {
+      window.__revitget_app = direct;
+      return direct;
+    }
+    const vueProxy = getVueProxy();
+    if (vueProxy) {
+      const found = deepFind(vueProxy, isAppCandidate, 8, 6000);
+      if (found) {
+        window.__revitget_app = found;
+        return found;
+      }
+    }
+    return null;
+  }
+
+  function isRendererCandidate(r) {
+    if (!r || typeof r !== "object") return false;
+    if (typeof r.setClearColor !== "function") return false;
+    const canvas = r.domElement || null;
+    return !!(canvas && canvas.tagName === "CANVAS");
+  }
+
+  function resolveView(app) {
+    try {
+      return app.view || app._view || app.viewer || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveRenderer(app, view) {
+    try {
+      const r = (view && (view.renderer || view._renderer)) || null;
+      if (isRendererCandidate(r)) return r;
+    } catch {}
+    const foundInView = view ? deepFind(view, isRendererCandidate, 7, 5000) : null;
+    if (foundInView) return foundInView;
+    return app ? deepFind(app, isRendererCandidate, 8, 7000) : null;
+  }
+
   function applyStyle() {
-    const root = window.webView ?? window;
-    const app = tryGet(root, ["app"]) || tryGet(root, ["webView", "app"]);
+    const app = resolveApp();
     if (!app) return false;
 
     patchLoadModel(app);
 
-    const view = app.view || app.viewer || app._view;
+    const view = resolveView(app);
     if (!view) return false;
 
-    const scene = view.scene || view._scene;
-    const renderer = view.renderer || view._renderer;
-
-    if (!scene || !renderer) return false;
+    const renderer = resolveRenderer(app, view);
+    if (!renderer) return false;
+    const scene = view.scene || view._scene || null;
 
     patchFormatButtons();
     ensureRendererGuard(renderer);
@@ -169,9 +285,7 @@
     if (renderer.__revitget_orig_exposure === undefined) {
       renderer.__revitget_orig_exposure = typeof renderer.toneMappingExposure === "number" ? renderer.toneMappingExposure : null;
     }
-    if (scene.__revitget_orig_bg === undefined) {
-      scene.__revitget_orig_bg = scene.background;
-    }
+    if (scene && scene.__revitget_orig_bg === undefined) scene.__revitget_orig_bg = scene.background;
 
     if (typeof renderer.setClearColor === "function") {
       if (isGlb) {
@@ -183,21 +297,18 @@
             canvas.style.backgroundColor = "#f6f8fb";
           }
         } catch {}
-        try {
-          const THREE = root.THREE;
-          if (THREE && typeof THREE.Color === "function") {
-            scene.background = new THREE.Color(LIGHT_BG_COLOR);
-          } else {
-            scene.background = null;
-          }
-        } catch {
-          scene.background = null;
+        if (scene) {
+          try {
+            if (scene.background && scene.background.isColor && typeof scene.background.setHex === "function") {
+              scene.background.setHex(LIGHT_BG_COLOR);
+            }
+          } catch {}
         }
         if (renderer.__revitget_orig_exposure !== null && typeof renderer.toneMappingExposure === "number") {
           renderer.toneMappingExposure = Math.max(renderer.__revitget_orig_exposure, 1.0) * 1.15;
         }
-        scene.__revitget_glb_applied = true;
-      } else if (scene.__revitget_glb_applied) {
+        renderer.__revitget_glb_applied = true;
+      } else if (renderer.__revitget_glb_applied) {
         renderer.__revitget_force_clear = null;
         const orig = renderer.__revitget_orig_clear;
         renderer.setClearColor(orig == null ? DARK_BG_COLOR : orig, 1);
@@ -207,11 +318,15 @@
             canvas.style.backgroundColor = "";
           }
         } catch {}
-        scene.background = scene.__revitget_orig_bg;
+        if (scene && scene.__revitget_orig_bg !== undefined) {
+          try {
+            scene.background = scene.__revitget_orig_bg;
+          } catch {}
+        }
         if (renderer.__revitget_orig_exposure !== null && typeof renderer.toneMappingExposure === "number") {
           renderer.toneMappingExposure = renderer.__revitget_orig_exposure;
         }
-        scene.__revitget_glb_applied = false;
+        renderer.__revitget_glb_applied = false;
       }
     }
 
