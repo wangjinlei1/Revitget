@@ -1,9 +1,9 @@
 
 (function () {
-  const LIGHT_BG_COLOR = 0xf6f8fb;
+  const LIGHT_BG_COLOR = 0xf2f3f5;
   const DARK_BG_COLOR = 0x050713;
   const objectUrlToExt = new Map();
-  const LIGHT_GL = { r: 246 / 255, g: 248 / 255, b: 251 / 255, a: 1 };
+  const LIGHT_GL = { r: 242 / 255, g: 243 / 255, b: 245 / 255, a: 1 };
   if (typeof window.__revitget_last_model_ext !== "string") window.__revitget_last_model_ext = "";
   if (typeof window.__revitget_force_glb_light_bg !== "boolean") window.__revitget_force_glb_light_bg = false;
 
@@ -28,7 +28,7 @@
   })();
 
   function applyPageBg(isGlb) {
-    const c = isGlb ? "#f6f8fb" : "";
+    const c = isGlb ? "#f2f3f5" : "";
     try {
       if (document && document.documentElement && document.documentElement.style) {
         document.documentElement.style.backgroundColor = c;
@@ -341,6 +341,133 @@
     return app ? deepFind(app, isRendererCandidate, 8, 7000) : null;
   }
 
+  function applyGlbEnvTuning(app) {
+    if (!app || typeof app.setEmviormentParameter !== "function") return;
+    const keys = ["roughnessPower", "radianceIntensity", "envPower", "smoothingPower"];
+    if (!window.__revitget_env_orig) {
+      const orig = {};
+      for (const k of keys) {
+        try {
+          if (typeof app.getEmviormentParameter === "function") orig[k] = app.getEmviormentParameter(k);
+        } catch {}
+      }
+      window.__revitget_env_orig = orig;
+    }
+    try {
+      app.setEmviormentParameter("roughnessPower", 1.0);
+    } catch {}
+    try {
+      app.setEmviormentParameter("radianceIntensity", 0.7);
+    } catch {}
+    try {
+      app.setEmviormentParameter("envPower", 0.8);
+    } catch {}
+    try {
+      app.setEmviormentParameter("smoothingPower", 0.7);
+    } catch {}
+  }
+
+  function restoreEnvTuning(app) {
+    const orig = window.__revitget_env_orig;
+    if (!orig || !app || typeof app.setEmviormentParameter !== "function") return;
+    for (const k of Object.keys(orig)) {
+      try {
+        if (orig[k] !== undefined) app.setEmviormentParameter(k, orig[k]);
+      } catch {}
+    }
+  }
+
+  function classifyMaterial(mat) {
+    const n = String(mat && mat.name ? mat.name : "").toLowerCase();
+    if (!n) return "";
+    if (n.includes("concrete") || n.includes("cement") || n.includes("混凝土") || n.includes("砼")) return "concrete";
+    if (
+      n.includes("steel") ||
+      n.includes("metal") ||
+      n.includes("stainless") ||
+      n.includes("aluminum") ||
+      n.includes("铝") ||
+      n.includes("不锈") ||
+      n.includes("金属") ||
+      n.includes("钢")
+    ) {
+      return "metal";
+    }
+    return "";
+  }
+
+  const materialOrig = new WeakMap();
+
+  function tuneOneMaterial(mat) {
+    if (!mat || typeof mat !== "object") return;
+    if (!("roughness" in mat) && !("metalness" in mat)) return;
+    if (!materialOrig.has(mat)) {
+      materialOrig.set(mat, {
+        roughness: mat.roughness,
+        metalness: mat.metalness,
+        envMapIntensity: mat.envMapIntensity
+      });
+    }
+    const type = classifyMaterial(mat);
+    const metalness = typeof mat.metalness === "number" ? mat.metalness : 0;
+    const roughness = typeof mat.roughness === "number" ? mat.roughness : 1;
+    const env = typeof mat.envMapIntensity === "number" ? mat.envMapIntensity : 1;
+
+    if (type === "concrete") {
+      mat.metalness = 0;
+      mat.roughness = Math.max(roughness, 0.92);
+      mat.envMapIntensity = Math.min(env, 0.35);
+    } else if (type === "metal" || metalness > 0.6) {
+      mat.metalness = Math.max(metalness, 0.9);
+      mat.roughness = Math.min(roughness, 0.35);
+      mat.envMapIntensity = Math.max(env, 0.9);
+    } else {
+      mat.metalness = Math.min(metalness, 0.1);
+      mat.roughness = Math.max(roughness, 0.85);
+      mat.envMapIntensity = Math.min(env, 0.4);
+    }
+    try {
+      mat.needsUpdate = true;
+    } catch {}
+  }
+
+  function traverseMaterials(root, fn) {
+    if (!root || typeof root !== "object") return;
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      const mat = node.material;
+      if (Array.isArray(mat)) {
+        for (const m of mat) fn(m);
+      } else if (mat) {
+        fn(mat);
+      }
+    };
+    if (typeof root.traverse === "function") {
+      root.traverse(visit);
+    } else {
+      visit(root);
+    }
+  }
+
+  function applyMaterialTuning(view, scene) {
+    const root = (view && (view.root || view._root)) || scene;
+    traverseMaterials(root, tuneOneMaterial);
+  }
+
+  function restoreMaterialTuning(view, scene) {
+    const root = (view && (view.root || view._root)) || scene;
+    traverseMaterials(root, (mat) => {
+      const o = materialOrig.get(mat);
+      if (!o) return;
+      try {
+        mat.roughness = o.roughness;
+        mat.metalness = o.metalness;
+        mat.envMapIntensity = o.envMapIntensity;
+        mat.needsUpdate = true;
+      } catch {}
+    });
+  }
+
   function applyStyle() {
     const app = resolveApp();
     if (!app) return false;
@@ -386,21 +513,21 @@
 
     if (typeof renderer.setClearColor === "function") {
       if (isGlb) {
+        applyGlbEnvTuning(app);
         renderer.__revitget_force_clear = LIGHT_BG_COLOR;
         renderer.setClearColor(LIGHT_BG_COLOR, 1);
         try {
           const canvas = renderer.domElement;
           if (canvas && canvas.style) {
-            canvas.style.backgroundColor = "#f6f8fb";
+            canvas.style.backgroundColor = "#f2f3f5";
           }
         } catch {}
         try {
           const host = renderer.domElement && renderer.domElement.parentElement;
-          if (host && host.style) host.style.backgroundColor = "#f6f8fb";
+          if (host && host.style) host.style.backgroundColor = "#f2f3f5";
         } catch {}
-        try {
-          if (document.body && document.body.style) document.body.style.backgroundColor = "#f6f8fb";
-        } catch {}
+        applyPageBg(true);
+        applyMaterialTuning(view, scene);
         if (scene) {
           try {
             if (scene.background && scene.background.isColor && typeof scene.background.setHex === "function") {
@@ -413,6 +540,7 @@
         }
         renderer.__revitget_glb_applied = true;
       } else if (renderer.__revitget_glb_applied) {
+        restoreEnvTuning(app);
         renderer.__revitget_force_clear = null;
         const orig = renderer.__revitget_orig_clear;
         renderer.setClearColor(orig == null ? DARK_BG_COLOR : orig, 1);
@@ -426,9 +554,8 @@
           const host = renderer.domElement && renderer.domElement.parentElement;
           if (host && host.style) host.style.backgroundColor = "";
         } catch {}
-        try {
-          if (document.body && document.body.style) document.body.style.backgroundColor = "";
-        } catch {}
+        applyPageBg(false);
+        restoreMaterialTuning(view, scene);
         if (scene && scene.__revitget_orig_bg !== undefined) {
           try {
             scene.background = scene.__revitget_orig_bg;
