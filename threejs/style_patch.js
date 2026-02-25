@@ -1,6 +1,6 @@
 
 (function () {
-  const LIGHT_BG_COLOR = 0xffffff;
+  const LIGHT_BG_COLOR = 0xf6f8fb;
   const DARK_BG_COLOR = 0x050713;
 
   function tryGet(obj, path) {
