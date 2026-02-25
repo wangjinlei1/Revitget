@@ -6,17 +6,16 @@
     <title>Revitget · Web Viewer</title>
     <style>
       :root {
-        --bg0: #ffffff;
-        --bg1: #f3f5f8;
-        --bg2: #e6ebf2;
-        --c0: #0078d4;
-        --c1: #5b5fc7;
-        --c2: #00b294;
-        --text: #1f2937;
-        --muted: #6b7280;
-        --glass: rgba(255, 255, 255, 0.85);
-        --stroke: rgba(0, 0, 0, 0.06);
-        --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        --bg: #f6f8fb;
+        --panel: rgba(255, 255, 255, 0.9);
+        --text: #0f172a;
+        --muted: rgba(15, 23, 42, 0.62);
+        --border: rgba(15, 23, 42, 0.08);
+        --shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+        --shadow-sm: 0 12px 34px rgba(15, 23, 42, 0.08);
+        --accent: #2563eb;
+        --accent2: #7c3aed;
+        --accent-soft: rgba(37, 99, 235, 0.14);
       }
 
       * {
@@ -33,26 +32,17 @@
         color: var(--text);
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
           "Apple Color Emoji", "Segoe UI Emoji";
-        background: radial-gradient(
-            1000px 1000px at 20% 20%,
-            rgba(230, 240, 255, 0.8),
-            transparent 60%
-          ),
-          radial-gradient(
-            800px 800px at 80% 80%,
-            rgba(240, 230, 255, 0.6),
-            transparent 50%
-          ),
-          linear-gradient(135deg, var(--bg0) 0%, #f0f4f8 100%);
+        background: radial-gradient(900px 600px at 20% 10%, rgba(37, 99, 235, 0.12), transparent 62%),
+          radial-gradient(700px 520px at 85% 22%, rgba(124, 58, 237, 0.12), transparent 58%),
+          linear-gradient(180deg, var(--bg) 0%, #ffffff 65%, #ffffff 100%);
         overflow-x: hidden;
       }
 
       .wrap {
         position: relative;
-        max-width: 1200px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 36px 22px 60px;
-        text-align: center;
+        padding: 34px 20px 54px;
       }
 
       @keyframes fadeUp {
@@ -68,11 +58,10 @@
 
       .topbar {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 12px;
-        margin-bottom: 28px;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 22px;
         animation: fadeUp 0.8s ease-out forwards;
       }
 
@@ -81,28 +70,21 @@
         align-items: center;
         gap: 12px;
         min-width: 0;
-        justify-content: center;
       }
 
       .logo {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: conic-gradient(
-          from 210deg,
-          rgba(0, 120, 212, 0.92),
-          rgba(91, 95, 199, 0.92),
-          rgba(0, 178, 148, 0.9),
-          rgba(0, 120, 212, 0.92)
-        );
-        border: 1px solid var(--stroke);
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55) inset, 0 18px 54px rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(124, 58, 237, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        box-shadow: 0 14px 44px rgba(37, 99, 235, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06);
       }
 
       .brand h1 {
-        font-size: 14px;
+        font-size: 13px;
         margin: 0;
-        letter-spacing: 0.6px;
+        letter-spacing: 0.2px;
         white-space: nowrap;
       }
 
@@ -119,15 +101,15 @@
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-        justify-content: center;
+        justify-content: flex-start;
       }
 
       .cta.main {
-        margin-top: 18px;
+        margin-top: 16px;
       }
 
       .link {
-        color: var(--c0);
+        color: var(--accent);
         text-decoration: none;
       }
 
@@ -136,27 +118,29 @@
       }
 
       .sub-links {
-        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
       }
 
       .btn {
         position: relative;
         appearance: none;
-        border: 1px solid var(--stroke);
-        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.78);
         color: var(--text);
         padding: 10px 14px;
         border-radius: 14px;
         text-decoration: none;
         font-size: 13px;
         letter-spacing: 0.2px;
-        transition: transform 140ms ease, background 140ms ease, border-color 140ms ease,
-          box-shadow 140ms ease, filter 140ms ease;
+        transition: transform 160ms ease, background 160ms ease, border-color 160ms ease,
+          box-shadow 160ms ease;
         display: inline-flex;
         align-items: center;
         gap: 8px;
         user-select: none;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-sm);
       }
 
       .btn::before {
@@ -165,141 +149,279 @@
         inset: 0;
         border-radius: 14px;
         pointer-events: none;
-        background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.7),
-          rgba(255, 255, 255, 0) 45%,
-          rgba(0, 120, 212, 0.06)
-        );
-        opacity: 0.55;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 48%);
+        opacity: 0.65;
       }
 
       .btn:hover {
         transform: translateY(-2px);
         background: rgba(255, 255, 255, 0.92);
-        border-color: rgba(0, 120, 212, 0.18);
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+        border-color: rgba(37, 99, 235, 0.22);
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
       }
 
       .btn.primary {
-        background: linear-gradient(
-          135deg,
-          rgba(0, 120, 212, 0.12),
-          rgba(91, 95, 199, 0.1)
-        );
-        border-color: rgba(0, 120, 212, 0.26);
-        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12),
-          0 0 0 1px rgba(0, 120, 212, 0.1) inset;
+        color: #ffffff;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.98), rgba(124, 58, 237, 0.92));
+        border-color: rgba(255, 255, 255, 0.22);
+        box-shadow: 0 22px 60px rgba(37, 99, 235, 0.26);
       }
 
       .btn.primary.big {
-        font-size: 16px;
-        padding: 14px 42px;
-        border-radius: 18px;
-        letter-spacing: 0.3px;
-        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.16),
-          0 0 0 1px rgba(0, 120, 212, 0.12) inset;
-        transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        font-size: 15px;
+        padding: 14px 22px;
+        border-radius: 16px;
+        letter-spacing: 0.2px;
       }
 
       .btn.primary.big:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 26px 70px rgba(0, 120, 212, 0.18),
-          0 0 0 1px rgba(0, 120, 212, 0.22) inset;
+        transform: translateY(-2px);
+        box-shadow: 0 28px 72px rgba(37, 99, 235, 0.3);
       }
 
-      .layout {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 0;
-        align-items: start;
+      .btn.ghost {
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: none;
+      }
+
+      .btn.small {
+        padding: 8px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        box-shadow: none;
+      }
+
+      .btn:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, 0.25);
+        outline-offset: 2px;
+      }
+
+      #toggleFormats {
+        position: relative;
+        padding-right: 30px;
+      }
+
+      #toggleFormats::after {
+        content: "";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        width: 12px;
+        height: 12px;
+        transform: translateY(-50%) rotate(0deg);
+        opacity: 0.75;
+        background: rgba(15, 23, 42, 0.55);
+        -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A//www.w3.org/2000/svg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D'black'%20d%3D'M8.12%209.29%2012%2013.17l3.88-3.88%201.41%201.41L12%2015.99%206.71%2010.7z'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A//www.w3.org/2000/svg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D'black'%20d%3D'M8.12%209.29%2012%2013.17l3.88-3.88%201.41%201.41L12%2015.99%206.71%2010.7z'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+        transition: transform 160ms ease;
+      }
+
+      #toggleFormats[data-open="1"]::after {
+        transform: translateY(-50%) rotate(180deg);
+      }
+
+      .hero {
         opacity: 0;
         animation: fadeUp 0.8s ease-out 0.2s forwards;
       }
 
-      .panel {
+      .card {
         position: relative;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        padding: 16px 0 0;
-        box-shadow: none;
-        overflow: visible;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 26px 26px;
+        box-shadow: var(--shadow);
       }
 
-      .panel::before {
-        content: none;
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.12fr 0.88fr;
+        gap: 22px;
+        align-items: start;
       }
 
       .hero-title {
         margin: 0 0 10px;
-        font-size: clamp(22px, 2.6vw, 34px);
-        letter-spacing: 0.2px;
-        line-height: 1.08;
-        background: linear-gradient(
-          135deg,
-          rgba(31, 41, 55, 0.98),
-          rgba(0, 120, 212, 0.9),
-          rgba(91, 95, 199, 0.9)
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        font-size: clamp(28px, 3.2vw, 42px);
+        letter-spacing: -0.02em;
+        line-height: 1.06;
       }
 
       .hero-sub {
         margin: 0;
         color: var(--muted);
-        font-size: 16px;
+        font-size: 15px;
         line-height: 1.7;
-        max-width: 58ch;
-        margin-left: auto;
-        margin-right: auto;
+        max-width: 64ch;
       }
 
-      .chips {
+      .pills {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
-        margin-top: 16px;
-        justify-content: center;
+        margin-top: 14px;
       }
 
-      .chip {
-        padding: 8px 11px;
-        border-radius: 999px;
-        border: 1px solid var(--stroke);
-        background: rgba(255, 255, 255, 0.8);
-        font-size: 12px;
-        color: var(--text);
+      .pill {
         display: inline-flex;
         align-items: center;
         gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        color: rgba(15, 23, 42, 0.76);
+        font-size: 12px;
+        letter-spacing: 0.2px;
       }
 
-      .chip b {
-        font-weight: 650;
-        color: var(--text);
+      .pill i {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(124, 58, 237, 0.9));
+        box-shadow: 0 6px 18px rgba(37, 99, 235, 0.25);
+      }
+
+      .preview {
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.58));
+        box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+      }
+
+      .preview-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        background: rgba(255, 255, 255, 0.75);
+      }
+
+      .dots {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 99px;
+        background: rgba(15, 23, 42, 0.14);
+      }
+
+      .dot.r {
+        background: rgba(239, 68, 68, 0.55);
+      }
+
+      .dot.y {
+        background: rgba(234, 179, 8, 0.55);
+      }
+
+      .dot.g {
+        background: rgba(34, 197, 94, 0.55);
+      }
+
+      .url {
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.55);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 52%;
+      }
+
+      .badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        background: rgba(37, 99, 235, 0.1);
+        color: rgba(37, 99, 235, 0.92);
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+
+      .preview-body {
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .preview-hero {
+        border-radius: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        background: radial-gradient(420px 240px at 25% 20%, rgba(37, 99, 235, 0.18), transparent 62%),
+          radial-gradient(360px 220px at 70% 60%, rgba(124, 58, 237, 0.16), transparent 60%),
+          rgba(255, 255, 255, 0.66);
+        height: 168px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .preview-hero::after {
+        content: "";
+        position: absolute;
+        inset: -40px -40px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2));
+        transform: rotate(12deg);
+        opacity: 0.55;
+      }
+
+      .preview-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .preview-tile {
+        border-radius: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        background: rgba(255, 255, 255, 0.7);
+        padding: 12px 12px;
+        display: grid;
+        gap: 4px;
+      }
+
+      .preview-tile b {
+        font-size: 12px;
+        letter-spacing: 0.2px;
+        color: rgba(15, 23, 42, 0.82);
+      }
+
+      .preview-tile span {
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.56);
+        line-height: 1.45;
       }
 
       .section {
-        margin-top: 32px;
+        margin-top: 18px;
         opacity: 0;
         animation: fadeUp 0.8s ease-out 0.4s forwards;
       }
 
+      .section .card {
+        padding: 18px 18px;
+        box-shadow: var(--shadow-sm);
+      }
+
       .section-head {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        align-items: baseline;
+        justify-content: space-between;
         gap: 12px;
         margin: 0 0 12px;
       }
 
       .section-head h3 {
         margin: 0;
-        font-size: 14px;
+        font-size: 13px;
         letter-spacing: 0.3px;
       }
 
@@ -309,33 +431,53 @@
         color: var(--muted);
       }
 
+      .formats-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .formats-count {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .formats-wrap {
+        display: none;
+      }
+
+      .formats-wrap.open {
+        display: block;
+      }
+
       .formats {
         margin: 0;
         padding: 0;
         list-style: none;
-        display: flex;
+        display: grid;
         gap: 12px;
-        flex-wrap: wrap;
-        justify-content: center;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       }
 
       .fmt {
-        flex: 1 1 200px;
-        border: none;
-        background: transparent;
-        border-radius: 0;
-        padding: 10px 12px;
-        box-shadow: none;
-        text-align: center;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.75);
+        border-radius: 18px;
+        padding: 12px 12px;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+        text-align: left;
       }
 
       .fmt .t {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-bottom: 8px;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
       }
 
       .fmt .name {
@@ -350,9 +492,9 @@
         width: 26px;
         height: 26px;
         border-radius: 10px;
-        background: linear-gradient(135deg, rgba(0, 120, 212, 0.18), rgba(91, 95, 199, 0.16));
-        border: 1px solid var(--stroke);
-        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(124, 58, 237, 0.18));
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
         -webkit-mask: var(--icon) center / 16px 16px no-repeat;
         mask: var(--icon) center / 16px 16px no-repeat;
       }
@@ -397,8 +539,8 @@
         color: var(--muted);
         padding: 2px 8px;
         border-radius: 999px;
-        border: 1px solid var(--stroke);
-        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.8);
       }
 
       .fmt .desc {
@@ -409,16 +551,39 @@
       }
 
       @media (max-width: 860px) {
-        .layout {
+        .topbar {
+          justify-content: center;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .sub-links {
+          justify-content: center;
+        }
+
+        .hero-grid {
           grid-template-columns: 1fr;
-          gap: 16px;
+        }
+
+        .url {
+          max-width: 68%;
         }
       }
 
       @media (max-width: 520px) {
         .cta {
           width: 100%;
+          justify-content: flex-start;
+        }
+
+        .card {
+          padding: 18px 16px;
+        }
+
+        .btn.primary.big {
+          width: 100%;
           justify-content: center;
+          padding: 14px 18px;
         }
       }
     </style>
@@ -430,31 +595,70 @@
           <div class="logo"></div>
           <div>
             <h1>Revitget Web Viewer</h1>
-            <p>在线预览 · 轻量部署 · 即开即用</p>
+            <p>更快地预览与分享 3D/BIM/CAD 文件</p>
           </div>
+        </div>
+        <div class="sub-links">
+          <a class="btn ghost small" href="https://github.com/wangjinlei1/Revitget" target="_blank" rel="noopener">GitHub</a>
         </div>
       </div>
 
-      <div class="layout">
-        <div class="panel">
-          <h2 class="hero-title">轻量 3D 预览</h2>
-          <p class="hero-sub">进入查看页面后，直接加载本地模型文件，实现模型快速在线查看。</p>
-          <div class="cta main">
-            <a class="btn primary big" href="./threejs/index.html">进入查看器</a>
-            <a class="btn" href="./tutorial.pdf" target="_blank" rel="noopener">查看教程</a>
-          </div>
-          <div class="sub-links">
-            <a class="link" href="https://github.com/wangjinlei1/Revitget">GitHub</a>
+      <div class="hero">
+        <div class="card">
+          <div class="hero-grid">
+            <div>
+              <h2 class="hero-title">轻量 3D 预览</h2>
+              <p class="hero-sub">无需部署后端，进入查看器后直接上传文件即可预览。适合模型快速检查、在线分享与演示。</p>
+              <div class="cta main">
+                <a class="btn primary big" href="./threejs/index.html">进入查看器</a>
+                <a class="btn" href="./tutorial.pdf" target="_blank" rel="noopener">查看教程</a>
+              </div>
+              <div class="pills">
+                <span class="pill"><i></i>本地上传</span>
+                <span class="pill"><i></i>多格式支持</span>
+                <span class="pill"><i></i>HDR 环境光</span>
+                <span class="pill"><i></i>即开即用</span>
+              </div>
+            </div>
+            <div>
+              <div class="preview" aria-hidden="true">
+                <div class="preview-bar">
+                  <div class="dots">
+                    <span class="dot r"></span>
+                    <span class="dot y"></span>
+                    <span class="dot g"></span>
+                  </div>
+                  <div class="url">Revitget / threejs / index.html</div>
+                  <div class="badge">Viewer</div>
+                </div>
+                <div class="preview-body">
+                  <div class="preview-hero"></div>
+                  <div class="preview-grid">
+                    <div class="preview-tile"><b>加载</b><span>拖拽或选择文件</span></div>
+                    <div class="preview-tile"><b>浏览</b><span>旋转、缩放、漫游</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-head">
-          <h3>支持加载格式</h3>
-          <p class="hint">与查看器一致</p>
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>支持加载格式</h3>
+              <p class="hint">与查看器一致（共 <span id="formatsCount">—</span> 种）</p>
+            </div>
+            <div class="formats-meta">
+              <button class="btn ghost small" id="toggleFormats" type="button">查看列表</button>
+            </div>
+          </div>
+          <div class="formats-wrap" id="formatsWrap">
+            <ul class="formats" id="formats"></ul>
+          </div>
         </div>
-        <ul class="formats" id="formats"></ul>
       </div>
     </div>
     <script>
@@ -469,7 +673,29 @@
         }
 
         var el = document.getElementById("formats");
-        if (!el) return;
+        var countEl = document.getElementById("formatsCount");
+        var toggleBtn = document.getElementById("toggleFormats");
+        var wrap = document.getElementById("formatsWrap");
+        if (!el || !countEl || !toggleBtn || !wrap) return;
+
+        function setOpen(open) {
+          if (open) {
+            wrap.classList.add("open");
+            toggleBtn.textContent = "收起列表";
+            toggleBtn.setAttribute("aria-expanded", "true");
+            toggleBtn.setAttribute("data-open", "1");
+          } else {
+            wrap.classList.remove("open");
+            toggleBtn.textContent = "查看列表";
+            toggleBtn.setAttribute("aria-expanded", "false");
+            toggleBtn.removeAttribute("data-open");
+          }
+        }
+
+        setOpen(false);
+        toggleBtn.addEventListener("click", function () {
+          setOpen(!wrap.classList.contains("open"));
+        });
 
         fetch("./threejs/supported_formats.json", { cache: "no-store" })
           .then(function (r) {
@@ -478,6 +704,7 @@
           })
           .then(function (list) {
             if (!Array.isArray(list)) throw new Error("invalid format list");
+            countEl.textContent = String(list.length);
             el.innerHTML = list
               .map(function (it) {
                 var key = esc(it.key || "gltf");
@@ -489,9 +716,9 @@
                   key +
                   '">' +
                   '<div class="t">' +
-                  '<div class="name"><span class="ico"></span>' +
+                  '<div class="name"><span class="ico"></span><span>' +
                   name +
-                  "</div>" +
+                  "</span></div>" +
                   '<div class="ext">' +
                   ext +
                   "</div>" +
@@ -504,7 +731,9 @@
               })
               .join("");
           })
-          .catch(function () {});
+          .catch(function () {
+            countEl.textContent = "—";
+          });
       })();
     </script>
   </body>
