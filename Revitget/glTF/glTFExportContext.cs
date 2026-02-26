@@ -139,6 +139,10 @@ namespace Revitget.glTF
                         {
                             throw new InvalidOperationException("Draco 压缩结果为空，导出的模型可能无效。建议关闭 Draco 压缩重试。");
                         }
+                        long curPos = writer.BaseStream.Position;
+                        int pad = (int)((4 - (curPos % 4)) % 4);
+                        for (int p = 0; p < pad; p++) writer.Write((byte)0);
+                        int byteOffset = (int)(curPos + pad);
                         unsafe
                         {
                             byte* memBytePtr = (byte*)data.ToPointer();
@@ -149,6 +153,8 @@ namespace Revitget.glTF
                             }
 
                         }
+                        dracoBufferViews[i].byteOffset = byteOffset;
+                        dracoBufferViews[i].byteLength = size;
                         //释放c++内存
                         try
                         {
@@ -159,13 +165,6 @@ namespace Revitget.glTF
                             RecordError(ex);
                             return;
                         }
-                        int byteOffset = 0;
-                        if (i > 0)
-                        {
-                            byteOffset = dracoBufferViews[i - 1].byteLength + dracoBufferViews[i - 1].byteOffset;
-                        }
-                        dracoBufferViews[i].byteOffset = byteOffset;
-                        dracoBufferViews[i].byteLength = size;
                     }
                     glTF.bufferViews = dracoBufferViews;
                     foreach (var accessor in glTF.accessors)
@@ -180,7 +179,10 @@ namespace Revitget.glTF
                             image.bufferView = glTF.bufferViews.Count;
 
                             var bytes = File.ReadAllBytes(image.uri);
-                            var byteOffset = glTF.bufferViews[glTF.bufferViews.Count - 1].byteLength + glTF.bufferViews[glTF.bufferViews.Count - 1].byteOffset;
+                            long curPos = writer.BaseStream.Position;
+                            int pad = (int)((4 - (curPos % 4)) % 4);
+                            for (int p = 0; p < pad; p++) writer.Write((byte)0);
+                            int byteOffset = (int)(curPos + pad);
                             var imageView = glTFUtil.addBufferView(0, byteOffset, bytes.Length);
                             image.uri = null;
                             foreach (var b in bytes)
@@ -430,13 +432,12 @@ namespace Revitget.glTF
                 ElementId symId = node.GetSymbolId();
                 Element symElem = doc.GetElement(symId);
                 _curSymbolId = symElem == null ? null : symElem.UniqueId;
-                if (!string.IsNullOrWhiteSpace(_curSymbolId) && MapSymbolId.ContainsKey(_curSymbolId))
-                {
-                    _instancePushStack.Push(false);
-                    return RenderNodeAction.Skip;
-                }
                 _transformStack.Push(CurrentTransform.Multiply(node.GetTransform()));
                 _instancePushStack.Push(true);
+                if (!string.IsNullOrWhiteSpace(_curSymbolId) && MapSymbolId.ContainsKey(_curSymbolId))
+                {
+                    return RenderNodeAction.Skip;
+                }
                 return RenderNodeAction.Proceed;
             }
             catch (Exception ex)
@@ -597,13 +598,13 @@ namespace Revitget.glTF
                         dracoPrimative.bufferView = dracoBufferViews.Count;
                         int dracoAttrId = 0;
                         dracoPrimative.attributes.POSITION = dracoAttrId++;
-                        if (bufferData.uvBuffer.Count > 0)
-                        {
-                            dracoPrimative.attributes.TEXCOORD_0 = dracoAttrId++;
-                        }
                         if (bufferData.normalBuffer.Count > 0)
                         {
                             dracoPrimative.attributes.NORMAL = dracoAttrId++;
+                        }
+                        if (bufferData.uvBuffer.Count > 0)
+                        {
+                            dracoPrimative.attributes.TEXCOORD_0 = dracoAttrId++;
                         }
                         int byteOffset = 0;
                         int byteLength = 0;
