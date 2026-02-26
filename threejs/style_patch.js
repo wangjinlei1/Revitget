@@ -313,6 +313,16 @@
         return found;
       }
     }
+    if (!window.__revitget_app_global_search_done) {
+      window.__revitget_app_global_search_done = true;
+      try {
+        const found = deepFind(window, isAppCandidate, 5, 25000);
+        if (found) {
+          window.__revitget_app = found;
+          return found;
+        }
+      } catch {}
+    }
     return null;
   }
 
@@ -507,8 +517,21 @@
   }
 
   function applyStyle() {
+    try {
+      window.__revitget_dbg = window.__revitget_dbg || {};
+      window.__revitget_dbg.ts = Date.now();
+      window.__revitget_dbg.last_model_ext = window.__revitget_last_model_ext;
+      window.__revitget_dbg.force_glb_light_bg = window.__revitget_force_glb_light_bg;
+    } catch {}
+
     const app = resolveApp();
-    if (!app) return false;
+    if (!app) {
+      try {
+        window.__revitget_dbg = window.__revitget_dbg || {};
+        window.__revitget_dbg.app = null;
+      } catch {}
+      return false;
+    }
 
     patchLoadModel(app);
 
@@ -516,7 +539,15 @@
     if (!view) return false;
 
     const renderer = resolveRenderer(app, view);
-    if (!renderer) return false;
+    if (!renderer) {
+      try {
+        window.__revitget_dbg = window.__revitget_dbg || {};
+        window.__revitget_dbg.app = app;
+        window.__revitget_dbg.view = view;
+        window.__revitget_dbg.renderer = null;
+      } catch {}
+      return false;
+    }
     const scene = view.scene || view._scene || null;
     try {
       window.__revitget_dbg = { app, view, renderer, scene };
