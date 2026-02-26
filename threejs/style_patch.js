@@ -1,5 +1,15 @@
 
 (function () {
+  const params = (function () {
+    try {
+      return new URLSearchParams(String(location && location.search ? location.search : ""));
+    } catch {
+      return null;
+    }
+  })();
+  const RE_PATCH_OFF = params && (params.get("nopatch") === "1" || params.get("revitget_patch") === "0");
+  if (RE_PATCH_OFF) return;
+
   const LIGHT_BG_COLOR = 0xf2f3f5;
   const DARK_BG_COLOR = 0x050713;
   const objectUrlToExt = new Map();
