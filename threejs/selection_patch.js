@@ -5,10 +5,13 @@ const materialBaseline = new WeakMap();
 let baselineSceneRef = null;
 let baselineSceneState = null;
 let baselineRendererRef = null;
+let baselineRendererState = null;
+let baselineCanvasStyle = null;
 let baselineDomBg = null;
 let baselineRootBg = null;
 let restoreScheduled = false;
 let baselineCaptured = false;
+let restoreFramesLeft = 0;
 
 function tryGet(obj, path) {
   let cur = obj;
@@ -114,14 +117,56 @@ function snapshotRendererAndPage(renderer, scene) {
   }
   try {
     if (scene && baselineSceneState == null) {
+      const bg = scene.background ?? null;
+      const bgHex = getHexSafe(bg);
       baselineSceneState = {
-        background: scene.background ?? null,
+        background: bg,
+        backgroundHex: bgHex,
         environment: scene.environment ?? null,
         fog: scene.fog ?? null
       };
     }
   } catch {
     baselineSceneState = baselineSceneState ?? null;
+  }
+  try {
+    if (baselineRendererState == null || baselineRendererRef !== renderer) {
+      const clearColor = renderer && renderer._clearColor ? renderer._clearColor : null;
+      baselineRendererState = {
+        clearHex: getHexSafe(clearColor),
+        clearAlpha:
+          typeof renderer.getClearAlpha === "function"
+            ? renderer.getClearAlpha()
+            : typeof renderer._clearAlpha === "number"
+              ? renderer._clearAlpha
+              : null,
+        toneMappingExposure:
+          typeof renderer.toneMappingExposure === "number"
+            ? renderer.toneMappingExposure
+            : null,
+        toneMapping: typeof renderer.toneMapping === "number" ? renderer.toneMapping : null,
+        outputColorSpace:
+          typeof renderer.outputColorSpace === "string" ? renderer.outputColorSpace : null
+      };
+    }
+  } catch {
+    baselineRendererState = baselineRendererState ?? null;
+  }
+  try {
+    const el = renderer && renderer.domElement ? renderer.domElement : null;
+    if (el && baselineCanvasStyle == null) {
+      const s = el.style || null;
+      baselineCanvasStyle = s
+        ? {
+            backgroundColor: s.backgroundColor ?? null,
+            filter: s.filter ?? null,
+            opacity: s.opacity ?? null,
+            mixBlendMode: s.mixBlendMode ?? null
+          }
+        : null;
+    }
+  } catch {
+    baselineCanvasStyle = baselineCanvasStyle ?? null;
   }
   try {
     baselineDomBg = document && document.body && document.body.style ? document.body.style.backgroundColor : null;
@@ -143,6 +188,8 @@ function captureBaseline(app) {
   if (baselineSceneRef && baselineSceneRef !== scene) {
     baselineCaptured = false;
     baselineSceneState = null;
+    baselineRendererState = null;
+    baselineCanvasStyle = null;
   }
   ensureUniqueMaterials(scene);
   snapshotRendererAndPage(renderer, scene);
@@ -198,10 +245,51 @@ function restoreRendererAndPage(app) {
   const renderer = getRenderer(view);
   if (!renderer) return;
   try {
+    if (baselineRendererState) {
+      const cc = renderer && renderer._clearColor ? renderer._clearColor : null;
+      if (cc && baselineRendererState.clearHex != null) setHexSafe(cc, baselineRendererState.clearHex);
+      if (baselineRendererState.clearAlpha != null) {
+        if (typeof renderer.setClearAlpha === "function") renderer.setClearAlpha(baselineRendererState.clearAlpha);
+        else if (typeof renderer._clearAlpha === "number") renderer._clearAlpha = baselineRendererState.clearAlpha;
+      }
+      if (baselineRendererState.toneMappingExposure != null && typeof renderer.toneMappingExposure === "number") {
+        renderer.toneMappingExposure = baselineRendererState.toneMappingExposure;
+      }
+      if (baselineRendererState.toneMapping != null && typeof renderer.toneMapping === "number") {
+        renderer.toneMapping = baselineRendererState.toneMapping;
+      }
+      if (
+        baselineRendererState.outputColorSpace != null &&
+        typeof renderer.outputColorSpace === "string" &&
+        renderer.outputColorSpace !== baselineRendererState.outputColorSpace
+      ) {
+        renderer.outputColorSpace = baselineRendererState.outputColorSpace;
+      }
+    }
+  } catch {}
+  try {
     if (scene && baselineSceneRef === scene && baselineSceneState) {
-      if (scene.background !== baselineSceneState.background) scene.background = baselineSceneState.background;
+      const bg = baselineSceneState.background;
+      const bgHex = baselineSceneState.backgroundHex;
+      if (scene.background !== bg) scene.background = bg;
+      if (bgHex != null) {
+        const curBg = scene.background;
+        if (curBg) setHexSafe(curBg, bgHex);
+      }
       if (scene.environment !== baselineSceneState.environment) scene.environment = baselineSceneState.environment;
       if (scene.fog !== baselineSceneState.fog) scene.fog = baselineSceneState.fog;
+    }
+  } catch {}
+  try {
+    if (baselineCanvasStyle) {
+      const el = renderer && renderer.domElement ? renderer.domElement : null;
+      const s = el && el.style ? el.style : null;
+      if (s) {
+        if (baselineCanvasStyle.backgroundColor != null) s.backgroundColor = baselineCanvasStyle.backgroundColor;
+        if (baselineCanvasStyle.filter != null) s.filter = baselineCanvasStyle.filter;
+        if (baselineCanvasStyle.opacity != null) s.opacity = baselineCanvasStyle.opacity;
+        if (baselineCanvasStyle.mixBlendMode != null) s.mixBlendMode = baselineCanvasStyle.mixBlendMode;
+      }
     }
   } catch {}
   try {
@@ -224,6 +312,7 @@ function restoreBaseline(app) {
 
 function scheduleRestore(app) {
   if (!baselineCaptured) captureBaseline(app);
+  restoreFramesLeft = Math.max(restoreFramesLeft, 18);
   if (restoreScheduled) return;
   restoreScheduled = true;
   const run = () => {
@@ -231,13 +320,16 @@ function scheduleRestore(app) {
       restoreBaseline(app);
     } catch {}
   };
-  requestAnimationFrame(() => {
+  const tick = () => {
     run();
-    requestAnimationFrame(() => {
-      run();
+    restoreFramesLeft -= 1;
+    if (restoreFramesLeft > 0) {
+      requestAnimationFrame(tick);
+    } else {
       restoreScheduled = false;
-    });
-  });
+    }
+  };
+  requestAnimationFrame(tick);
 }
 
 function bindSelectionGuard(app) {
@@ -251,6 +343,7 @@ function bindSelectionGuard(app) {
     const handler = () => scheduleRestore(app);
     try {
       target.addEventListener("pointerdown", handler, { passive: true, capture: true });
+      target.addEventListener("pointerup", handler, { passive: true, capture: true });
       target.addEventListener("click", handler, { passive: true, capture: true });
     } catch {}
   };
