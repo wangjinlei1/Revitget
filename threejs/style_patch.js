@@ -368,6 +368,7 @@
   }
 
   const meshOrigMat = new WeakMap();
+  const matVariantCache = new WeakMap();
   let __revitget_tune_ver = 1;
 
   function nodeNameChain(node, maxUp = 3) {
@@ -421,17 +422,36 @@
     return "";
   }
 
-  function cloneMaterialForMesh(mesh) {
-    const mat = mesh && mesh.material;
-    if (!mat) return;
-    if (!meshOrigMat.has(mesh)) meshOrigMat.set(mesh, mat);
+  function getMeshOrigMaterial(mesh) {
+    if (!mesh) return null;
+    if (meshOrigMat.has(mesh)) return meshOrigMat.get(mesh);
     try {
-      if (Array.isArray(mat)) {
-        mesh.material = mat.map((m) => (m && typeof m.clone === "function" ? m.clone() : m));
-      } else if (mat && typeof mat.clone === "function") {
-        mesh.material = mat.clone();
-      }
+      const cur = mesh.material;
+      if (cur) meshOrigMat.set(mesh, cur);
+      return cur || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getMaterialVariant(origMat, type) {
+    if (!origMat || typeof origMat !== "object") return origMat;
+    if (!type) return origMat;
+    let rec = matVariantCache.get(origMat);
+    if (!rec) {
+      rec = {};
+      matVariantCache.set(origMat, rec);
+    }
+    if (rec[type]) return rec[type];
+    let cloned = origMat;
+    try {
+      if (typeof origMat.clone === "function") cloned = origMat.clone();
     } catch {}
+    try {
+      tuneOneMaterial(cloned, type);
+    } catch {}
+    rec[type] = cloned;
+    return cloned;
   }
 
   function geomHeuristicType(mesh) {
@@ -460,20 +480,25 @@
     if (!mesh.material) return;
     if (mesh.__revitget_tuned_ver === __revitget_tune_ver) return;
     const forced = classifyMesh(mesh);
-    const needSplit = forced || (!forced && (!mesh.name || !String(mesh.name).trim()));
-    if (needSplit) cloneMaterialForMesh(mesh);
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const heuristicForMesh = forced ? "" : geomHeuristicType(mesh);
+    const origMat = getMeshOrigMaterial(mesh) || mesh.material;
+    const mats = Array.isArray(origMat) ? origMat : [origMat];
+    const out = [];
     for (const m of mats) {
-      if (!m) continue;
-      const mName = String(m && m.name ? m.name : "").trim();
+      if (!m) {
+        out.push(m);
+        continue;
+      }
+      const mName = String(m && m.name ? m.name : "").trim().toLowerCase();
       const hinted = forced || classifyMaterial(m);
-      const heuristic = hinted ? "" : geomHeuristicType(mesh);
-      const type =
-        hinted ||
-        heuristic ||
-        ((typeof m.metalness === "number" && m.metalness > 0.6) || mName.toLowerCase().includes("metal") ? "metal" : "concrete");
-      tuneOneMaterial(m, type);
+      const byParams = (typeof m.metalness === "number" && m.metalness > 0.6) || mName.includes("metal") ? "metal" : "";
+      const type = hinted || byParams || heuristicForMesh || "concrete";
+      const needVariant = !!(forced || heuristicForMesh);
+      out.push(needVariant ? getMaterialVariant(m, type) : (tuneOneMaterial(m, type), m));
     }
+    try {
+      mesh.material = Array.isArray(origMat) ? out : out[0];
+    } catch {}
     try {
       mesh.__revitget_tuned_ver = __revitget_tune_ver;
     } catch {}
@@ -489,6 +514,50 @@
     });
   }
 
+  function applyMaterialTuningFromSceneAsync(scene) {
+    if (!scene || typeof scene !== "object") return;
+    if (scene.__revitget_tuning_ver === __revitget_tune_ver) return;
+    if (scene.__revitget_tuning_inflight) return;
+    scene.__revitget_tuning_inflight = true;
+    const stack = [scene];
+    const step = (deadline) => {
+      let iter = 0;
+      while (stack.length) {
+        let node = null;
+        try {
+          node = stack.pop();
+        } catch {
+          break;
+        }
+        if (!node) continue;
+        try {
+          const ch = node.children;
+          if (ch && ch.length) {
+            for (let i = 0; i < ch.length; i++) stack.push(ch[i]);
+          }
+        } catch {}
+        try {
+          if (node.isMesh || node.isSkinnedMesh || node.isInstancedMesh) tuneMeshMaterials(node);
+        } catch {}
+        iter++;
+        if (deadline && typeof deadline.timeRemaining === "function") {
+          if (iter >= 350 && deadline.timeRemaining() < 4) break;
+        } else if (iter >= 350) {
+          break;
+        }
+      }
+      if (stack.length) {
+        if (typeof requestIdleCallback === "function") requestIdleCallback(step, { timeout: 800 });
+        else setTimeout(() => step(null), 0);
+      } else {
+        scene.__revitget_tuning_inflight = false;
+        scene.__revitget_tuning_ver = __revitget_tune_ver;
+      }
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(step, { timeout: 800 });
+    else setTimeout(() => step(null), 0);
+  }
+
   function restoreMaterialTuningFromScene(scene) {
     if (!scene || typeof scene !== "object" || typeof scene.traverse !== "function") return;
     scene.traverse((node) => {
@@ -498,6 +567,9 @@
       } catch {}
     });
     __revitget_tune_ver += 1;
+    try {
+      matVariantCache && matVariantCache.clear && matVariantCache.clear();
+    } catch {}
   }
 
   function patchRendererRender(renderer) {
@@ -511,11 +583,11 @@
         window.__revitget_dbg.renderer = renderer;
         window.__revitget_dbg.scene = scene || null;
         window.__revitget_dbg.camera = camera || null;
-        if (scene) window.__revitget_dbg.materials = collectMaterials({ root: scene }, scene, 120);
+        if (scene && !window.__revitget_dbg.materials) window.__revitget_dbg.materials = collectMaterials({ root: scene }, scene, 120);
       } catch {}
       try {
         if (window.__revitget_force_glb_light_bg && scene) {
-          applyMaterialTuningFromScene(scene);
+          applyMaterialTuningFromSceneAsync(scene);
         }
       } catch {}
       return orig(scene, camera);
