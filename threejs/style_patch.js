@@ -9,6 +9,12 @@
   })();
   const RE_PATCH_OFF = params && (params.get("nopatch") === "1" || params.get("revitget_patch") === "0");
   if (RE_PATCH_OFF) return;
+  const RE_NO_BATCH = params && (params.get("nobatch") === "1" || params.get("revitget_batch") === "0");
+  const BATCH_MAX_MESHES = params && params.get("batch_max_meshes") ? Math.max(0, parseInt(params.get("batch_max_meshes"), 10) || 0) : 15000;
+  const BATCH_MAX_NODES = params && params.get("batch_max_nodes") ? Math.max(0, parseInt(params.get("batch_max_nodes"), 10) || 0) : 60000;
+  try {
+    window.__revitget_flags = { patchOff: false, noBatch: !!RE_NO_BATCH, batchMaxMeshes: BATCH_MAX_MESHES, batchMaxNodes: BATCH_MAX_NODES };
+  } catch {}
 
   const LIGHT_BG_COLOR = 0xf2f3f5;
   const DARK_BG_COLOR = 0x050713;
@@ -289,6 +295,90 @@
       }
     }
     return null;
+  }
+
+  function patchBatchAndInstance() {
+    if (window.__revitget_batch_patched) return true;
+    const cand = deepFind(
+      window,
+      (o) => o && typeof o === "object" && typeof o.BatchAndInstance === "function",
+      6,
+      25000
+    );
+    if (!cand) return false;
+    const orig = cand.BatchAndInstance;
+    if (orig && orig.__revitget_wrapped) {
+      window.__revitget_batch_patched = true;
+      return true;
+    }
+    function countScene(scene) {
+      let nodes = 0;
+      let meshes = 0;
+      const stack = [];
+      stack.push(scene);
+      while (stack.length && nodes <= BATCH_MAX_NODES && meshes <= BATCH_MAX_MESHES) {
+        const n = stack.pop();
+        if (!n || typeof n !== "object") continue;
+        nodes += 1;
+        try {
+          if (n.isMesh || n.isSkinnedMesh || n.isInstancedMesh) meshes += 1;
+        } catch {}
+        try {
+          const ch = n.children;
+          if (ch && ch.length) {
+            for (let i = 0; i < ch.length; i++) stack.push(ch[i]);
+          }
+        } catch {}
+      }
+      return { nodes, meshes };
+    }
+    const wrapped = function (scene, doc) {
+      const dbg = (window.__revitget_dbg = window.__revitget_dbg || {});
+      try {
+        dbg.batch = dbg.batch || {};
+        dbg.batch.ts = Date.now();
+      } catch {}
+      if (RE_NO_BATCH) {
+        try {
+          dbg.batch.skip = true;
+          dbg.batch.reason = "param";
+        } catch {}
+        return;
+      }
+      let stats = null;
+      try {
+        stats = scene ? countScene(scene) : null;
+      } catch {
+        stats = null;
+      }
+      if (stats && (stats.nodes > BATCH_MAX_NODES || stats.meshes > BATCH_MAX_MESHES)) {
+        try {
+          dbg.batch.skip = true;
+          dbg.batch.reason = "too_big";
+          dbg.batch.nodes = stats.nodes;
+          dbg.batch.meshes = stats.meshes;
+        } catch {}
+        return;
+      }
+      try {
+        dbg.batch.skip = false;
+        dbg.batch.reason = "run";
+        if (stats) {
+          dbg.batch.nodes = stats.nodes;
+          dbg.batch.meshes = stats.meshes;
+        }
+      } catch {}
+      return orig.call(this, scene, doc);
+    };
+    wrapped.__revitget_wrapped = true;
+    try {
+      cand.BatchAndInstance = wrapped;
+      window.__revitget_batch_patched = true;
+      window.__revitget_batch_utils = cand;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function getVueProxy() {
@@ -818,6 +908,9 @@
       window.__revitget_dbg.ts = Date.now();
       window.__revitget_dbg.last_model_ext = window.__revitget_last_model_ext;
       window.__revitget_dbg.force_glb_light_bg = window.__revitget_force_glb_light_bg;
+    } catch {}
+    try {
+      patchBatchAndInstance();
     } catch {}
 
     const app = resolveApp();
