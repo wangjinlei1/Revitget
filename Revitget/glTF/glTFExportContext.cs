@@ -129,67 +129,153 @@ namespace Revitget.glTF
                 {
                     //等待线程结束
                     Task.WaitAll(taskList.ToArray());
-                    var Binarylength = allBinaryDatas.Count;
-                    for (int i = 0; i < Binarylength; i++)
+                    bool useDracoWrite = true;
+                    for (int i = 0; i < allBinaryDatas.Count; i++)
                     {
-                        var binData = allBinaryDatas[i];
-                        var data = binData.dracoData;
-                        var size = binData.dracoSize;
-                        if (data == IntPtr.Zero || size <= 0)
+                        var d = allBinaryDatas[i];
+                        if (d.dracoData == IntPtr.Zero || d.dracoSize <= 0)
                         {
-                            throw new InvalidOperationException("Draco 压缩结果为空，导出的模型可能无效。建议关闭 Draco 压缩重试。");
-                        }
-                        long curPos = writer.BaseStream.Position;
-                        int pad = (int)((4 - (curPos % 4)) % 4);
-                        for (int p = 0; p < pad; p++) writer.Write((byte)0);
-                        int byteOffset = (int)(curPos + pad);
-                        unsafe
-                        {
-                            byte* memBytePtr = (byte*)data.ToPointer();
-                            for (int j = 0; j < size; j++)
-                            {
-                                writer.Write(*(byte*)memBytePtr);
-                                memBytePtr += 1;
-                            }
-
-                        }
-                        dracoBufferViews[i].byteOffset = byteOffset;
-                        dracoBufferViews[i].byteLength = size;
-                        //释放c++内存
-                        try
-                        {
-                            glTFDraco.deleteDracoData(data);
-                        }
-                        catch (Exception ex)
-                        {
-                            RecordError(ex);
-                            return;
+                            useDracoWrite = false;
+                            break;
                         }
                     }
-                    glTF.bufferViews = dracoBufferViews;
-                    foreach (var accessor in glTF.accessors)
-                    {
-                        accessor.bufferView = null;
-                        accessor.byteOffset = null;
-                    }
-                    if(glTF.images!=null)
-                    {
-                        foreach (var image in glTF.images)
-                        {
-                            image.bufferView = glTF.bufferViews.Count;
 
-                            var bytes = File.ReadAllBytes(image.uri);
+                    if (useDracoWrite)
+                    {
+                        for (int i = 0; i < allBinaryDatas.Count; i++)
+                        {
+                            var binData = allBinaryDatas[i];
+                            var data = binData.dracoData;
+                            var size = binData.dracoSize;
                             long curPos = writer.BaseStream.Position;
                             int pad = (int)((4 - (curPos % 4)) % 4);
                             for (int p = 0; p < pad; p++) writer.Write((byte)0);
                             int byteOffset = (int)(curPos + pad);
-                            var imageView = glTFUtil.addBufferView(0, byteOffset, bytes.Length);
-                            image.uri = null;
-                            foreach (var b in bytes)
+                            unsafe
                             {
-                                writer.Write(b);
+                                byte* memBytePtr = (byte*)data.ToPointer();
+                                for (int j = 0; j < size; j++)
+                                {
+                                    writer.Write(*(byte*)memBytePtr);
+                                    memBytePtr += 1;
+                                }
+
                             }
-                            glTF.bufferViews.Add(imageView);
+                            dracoBufferViews[i].byteOffset = byteOffset;
+                            dracoBufferViews[i].byteLength = size;
+                            try
+                            {
+                                glTFDraco.deleteDracoData(data);
+                            }
+                            catch (Exception ex)
+                            {
+                                RecordError(ex);
+                                return;
+                            }
+                        }
+                        glTF.bufferViews = dracoBufferViews;
+                        foreach (var accessor in glTF.accessors)
+                        {
+                            accessor.bufferView = null;
+                            accessor.byteOffset = null;
+                        }
+                        if (glTF.images != null)
+                        {
+                            foreach (var image in glTF.images)
+                            {
+                                image.bufferView = glTF.bufferViews.Count;
+
+                                var bytes = File.ReadAllBytes(image.uri);
+                                long curPos = writer.BaseStream.Position;
+                                int pad = (int)((4 - (curPos % 4)) % 4);
+                                for (int p = 0; p < pad; p++) writer.Write((byte)0);
+                                int byteOffset = (int)(curPos + pad);
+                                var imageView = glTFUtil.addBufferView(0, byteOffset, bytes.Length);
+                                image.uri = null;
+                                foreach (var b in bytes)
+                                {
+                                    writer.Write(b);
+                                }
+                                glTF.bufferViews.Add(imageView);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < allBinaryDatas.Count; i++)
+                        {
+                            var binData = allBinaryDatas[i];
+                            if (binData.dracoData != IntPtr.Zero)
+                            {
+                                try
+                                {
+                                    glTFDraco.deleteDracoData(binData.dracoData);
+                                }
+                                catch
+                                {
+                                }
+                            }
+                        }
+                        setting.useDraco = false;
+                        glTF.extensionsRequired = null;
+                        glTF.extensionsUsed = null;
+                        foreach (var m in glTF.meshes)
+                        {
+                            if (m.primitives == null) continue;
+                            foreach (var p in m.primitives)
+                            {
+                                p.extensions = null;
+                            }
+                        }
+                        foreach (var binData in allBinaryDatas)
+                        {
+                            foreach (var index in binData.indexBuffer)
+                            {
+                                if (binData.indexMax > 65535)
+                                {
+                                    writer.Write((uint)index);
+                                }
+                                else
+                                {
+                                    writer.Write((ushort)index);
+                                }
+                            }
+                            if (binData.indexAlign != null && binData.indexAlign != 0)
+                            {
+                                writer.Write((ushort)binData.indexAlign);
+                            }
+                            foreach (var coord in binData.vertexBuffer)
+                            {
+                                writer.Write((float)coord);
+                            }
+                            foreach (var normal in binData.normalBuffer)
+                            {
+                                writer.Write((float)normal);
+                            }
+                            foreach (var uv in binData.uvBuffer)
+                            {
+                                writer.Write((float)uv);
+                            }
+                        }
+                        if (glTF.images != null)
+                        {
+                            foreach (var image in glTF.images)
+                            {
+                                image.bufferView = glTF.bufferViews.Count;
+
+                                var bytes = File.ReadAllBytes(image.uri);
+                                long curPos = writer.BaseStream.Position;
+                                int pad = (int)((4 - (curPos % 4)) % 4);
+                                for (int p = 0; p < pad; p++) writer.Write((byte)0);
+                                int byteOffset = (int)(curPos + pad);
+                                var imageView = glTFUtil.addBufferView(0, byteOffset, bytes.Length);
+                                image.uri = null;
+                                foreach (var b in bytes)
+                                {
+                                    writer.Write(b);
+                                }
+                                glTF.bufferViews.Add(imageView);
+                            }
                         }
                     }
                 }
@@ -232,7 +318,10 @@ namespace Revitget.glTF
                             image.bufferView = glTF.bufferViews.Count;
 
                             var bytes = File.ReadAllBytes(image.uri);
-                            var byteOffset = glTF.bufferViews[glTF.bufferViews.Count - 1].byteLength + glTF.bufferViews[glTF.bufferViews.Count - 1].byteOffset;
+                            long curPos = writer.BaseStream.Position;
+                            int pad = (int)((4 - (curPos % 4)) % 4);
+                            for (int p = 0; p < pad; p++) writer.Write((byte)0);
+                            int byteOffset = (int)(curPos + pad);
                             var imageView = glTFUtil.addBufferView(0, byteOffset, bytes.Length);
 
                             image.uri = null;
@@ -554,7 +643,10 @@ namespace Revitget.glTF
                 foreach (var key in curMapBinaryData.Keys)
                 {
                     var bufferData = curMapBinaryData[key];
-                    var primative = new glTFMeshPrimitive();
+                    if (bufferData.vertexBuffer.Count == 0 || bufferData.indexBuffer.Count == 0 || (bufferData.indexBuffer.Count % 3) != 0)
+                    {
+                        continue;
+                    }
                     if (!MapMaterial.ContainsKey(key))
                     {
                         var gl_mat = new glTFMaterial();
@@ -564,18 +656,13 @@ namespace Revitget.glTF
                         glTF.materials.Add(gl_mat);
                         MapMaterial.Add(key, gl_mat);
                     }
+                    var primative = new glTFMeshPrimitive();
                     primative.material = MapMaterial[key].index;
                     mesh.primitives.Add(primative);
-                    if (bufferData.indexBuffer.Count > 0)
-                    {
-                        glTFUtil.addIndexsBufferViewAndAccessor(glTF, bufferData);
-                        primative.indices = glTF.accessors.Count - 1;
-                    }
-                    if (bufferData.vertexBuffer.Count > 0)
-                    {
-                        glTFUtil.addVec3BufferViewAndAccessor(glTF, bufferData);
-                        primative.attributes.POSITION = glTF.accessors.Count - 1;
-                    }
+                    glTFUtil.addIndexsBufferViewAndAccessor(glTF, bufferData);
+                    primative.indices = glTF.accessors.Count - 1;
+                    glTFUtil.addVec3BufferViewAndAccessor(glTF, bufferData);
+                    primative.attributes.POSITION = glTF.accessors.Count - 1;
                     if (bufferData.normalBuffer.Count > 0)
                     {
                         glTFUtil.addNormalBufferViewAndAccessor(glTF, bufferData);
@@ -589,10 +676,6 @@ namespace Revitget.glTF
 
                     if (setting.useDraco)
                     {
-                        if (bufferData.vertexBuffer.Count == 0 || bufferData.indexBuffer.Count == 0)
-                        {
-                            throw new InvalidOperationException("启用 Draco 时，POSITION 与 indices 不能为空。请取消勾选 Draco 压缩后重试。");
-                        }
                         primative.extensions = new glTFPrimitiveExtensions();
                         var dracoPrimative = primative.extensions.KHR_draco_mesh_compression;
                         dracoPrimative.bufferView = dracoBufferViews.Count;

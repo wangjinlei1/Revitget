@@ -22,6 +22,12 @@
 3. 运行 `build_msi.bat`（双击即可）
 4. 生成的 `RevitgetSetup_2018-2020.msi` 会输出到 `Setup/bin` 目录
 
+也可以使用 PowerShell 脚本一键构建（支持自动下载 WiX binaries）：
+
+```
+powershell -ExecutionPolicy Bypass -File .\Setup\build_msi.ps1 -Revit2018Dir "C:\Program Files\Autodesk\Revit 2018" -Revit2020Dir "C:\Program Files\Autodesk\Revit 2020"
+```
+
 如果上述二进制目录缺失或不完整，请先用 Visual Studio/MSBuild 编译插件（按 Revit 版本分别编译），并将 `RevitInstallDir` 设置为对应 Revit 的安装目录。
 
 ## 支持版本

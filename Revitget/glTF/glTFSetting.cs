@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,9 +8,15 @@ namespace Revitget.glTF
 {
     internal class glTFSetting
     {
-        public bool useDraco { get; set; } = false;
+        public glTFSetting()
+        {
+            useDraco = false;
+            exportProperty = false;
+        }
+
+        public bool useDraco { get; set; }
         public string fileName { get; set; }
 
-        public bool exportProperty { get; set; } = false;
+        public bool exportProperty { get; set; }
     }
 }

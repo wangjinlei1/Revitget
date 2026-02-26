@@ -37,6 +37,10 @@ Generated\ Files/
 
 dist/
 
+Setup/bin/
+Setup/obj/
+Setup/tools/
+
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

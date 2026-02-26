@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 
@@ -69,9 +69,9 @@ namespace Revitget.glTF
 
         public string name { get; set; }
 
-        public int? mesh { get; set; } = null;
+        public int? mesh { get; set; }
 
-        public int? camera { get; set; } = null;
+        public int? camera { get; set; }
 
         public List<double> rotation { get; set; }
 
@@ -109,13 +109,18 @@ namespace Revitget.glTF
 
     public class glTFMeshPrimitive
     {
+        public glTFMeshPrimitive()
+        {
+            attributes = new glTFAttribute();
+            mode = ModeEnum.TRIANGLES;
+        }
 
-        public glTFAttribute attributes { get; set; } = new glTFAttribute();
+        public glTFAttribute attributes { get; set; }
 
         public int indices { get; set; }
 
-        public int? material { get; set; } = null;
-        public ModeEnum mode { get; set; } = ModeEnum.TRIANGLES;
+        public int? material { get; set; }
+        public ModeEnum mode { get; set; }
 
         public glTFPrimitiveExtensions extensions { get; set; }
     }
@@ -144,13 +149,23 @@ namespace Revitget.glTF
 
     public class glTFPrimitiveExtensions
     {
-        public glTFDracoMesh KHR_draco_mesh_compression { get; set; } = new glTFDracoMesh();
+        public glTFPrimitiveExtensions()
+        {
+            KHR_draco_mesh_compression = new glTFDracoMesh();
+        }
+
+        public glTFDracoMesh KHR_draco_mesh_compression { get; set; }
     }
 
     public class glTFDracoMesh
     {
-        public int? bufferView { get; set; } = null;
-        public glTFAttribute attributes { get; set; } = new glTFAttribute();
+        public glTFDracoMesh()
+        {
+            attributes = new glTFAttribute();
+        }
+
+        public int? bufferView { get; set; }
+        public glTFAttribute attributes { get; set; }
     }
 
 
@@ -252,7 +267,7 @@ namespace Revitget.glTF
 
     public class glTFbaseColorTexture
     {
-        public int? index { get; set; } = null;
+        public int? index { get; set; }
     }
 
 
@@ -260,9 +275,9 @@ namespace Revitget.glTF
     public class glTFTexture
     {
 
-        public int? source { get; set; } = null;
+        public int? source { get; set; }
 
-        public int? sampler { get; set; } = null;
+        public int? sampler { get; set; }
 
     }
     public class glTFImage
@@ -291,9 +306,9 @@ namespace Revitget.glTF
     {
         public string type { get; set; }
 
-        public glTFPerspectiveCamera perspective { get; set; } = null;
+        public glTFPerspectiveCamera perspective { get; set; }
 
-        public glTFOrthographicCamera orthographic { get; set; } = null;
+        public glTFOrthographicCamera orthographic { get; set; }
     }
 
     public class CameraType
@@ -322,17 +337,25 @@ namespace Revitget.glTF
 
     public class glTFBinaryData
     {
+        public glTFBinaryData()
+        {
+            vertexBuffer = new List<float>();
+            normalBuffer = new List<float>();
+            indexBuffer = new List<int>();
+            uvBuffer = new List<float>();
+            batchidBuffer = new List<int>();
+        }
 
-        public List<float> vertexBuffer { get; set; } = new List<float>();
+        public List<float> vertexBuffer { get; set; }
 
 
-        public List<float> normalBuffer { get; set; } = new List<float>();
+        public List<float> normalBuffer { get; set; }
 
-        public List<int> indexBuffer { get; set; } = new List<int>();
+        public List<int> indexBuffer { get; set; }
 
-        public List<float> uvBuffer { get; set; } = new List<float>();
+        public List<float> uvBuffer { get; set; }
 
-        public List<int> batchidBuffer { get; set; } = new List<int>();
+        public List<int> batchidBuffer { get; set; }
         public int? indexMax { get; set; }
         public int? indexAlign { get; set; }
 
