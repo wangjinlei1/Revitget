@@ -434,16 +434,44 @@
     } catch {}
   }
 
+  function geomHeuristicType(mesh) {
+    try {
+      const g = mesh && mesh.geometry;
+      if (!g || typeof g !== "object") return "";
+      if (!g.boundingBox && typeof g.computeBoundingBox === "function") g.computeBoundingBox();
+      const bb = g.boundingBox;
+      if (!bb || !bb.min || !bb.max) return "";
+      const dx = Math.abs(bb.max.x - bb.min.x);
+      const dy = Math.abs(bb.max.y - bb.min.y);
+      const dz = Math.abs(bb.max.z - bb.min.z);
+      const max = Math.max(dx, dy, dz);
+      const min = Math.min(dx, dy, dz);
+      if (!isFinite(max) || max <= 0) return "";
+      const ratio = min / max;
+      if (ratio < 0.08) return "metal";
+      return "concrete";
+    } catch {
+      return "";
+    }
+  }
+
   function tuneMeshMaterials(mesh) {
     if (!mesh || typeof mesh !== "object") return;
     if (!mesh.material) return;
     if (mesh.__revitget_tuned_ver === __revitget_tune_ver) return;
     const forced = classifyMesh(mesh);
-    if (forced) cloneMaterialForMesh(mesh);
+    const needSplit = forced || (!forced && (!mesh.name || !String(mesh.name).trim()));
+    if (needSplit) cloneMaterialForMesh(mesh);
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const m of mats) {
       if (!m) continue;
-      const type = forced || classifyMaterial(m) || ((typeof m.metalness === "number" && m.metalness > 0.6) ? "metal" : "concrete");
+      const mName = String(m && m.name ? m.name : "").trim();
+      const hinted = forced || classifyMaterial(m);
+      const heuristic = hinted ? "" : geomHeuristicType(mesh);
+      const type =
+        hinted ||
+        heuristic ||
+        ((typeof m.metalness === "number" && m.metalness > 0.6) || mName.toLowerCase().includes("metal") ? "metal" : "concrete");
       tuneOneMaterial(m, type);
     }
     try {
@@ -565,8 +593,14 @@
 
   function tuneOneMaterial(mat, forcedType) {
     if (!mat || typeof mat !== "object") return;
-    if (!("roughness" in mat) && !("metalness" in mat)) return;
+    const hasPbr = "roughness" in mat || "metalness" in mat || "envMapIntensity" in mat;
+    const hasPhong = "shininess" in mat || "specular" in mat || "reflectivity" in mat;
+    if (!hasPbr && !hasPhong) return;
     if (!materialOrig.has(mat)) {
+      let colorHex = null;
+      try {
+        if (mat.color && typeof mat.color.getHex === "function") colorHex = mat.color.getHex();
+      } catch {}
       materialOrig.set(mat, {
         roughness: mat.roughness,
         metalness: mat.metalness,
@@ -575,7 +609,10 @@
         clearcoatRoughness: mat.clearcoatRoughness,
         sheen: mat.sheen,
         sheenRoughness: mat.sheenRoughness,
-        specularIntensity: mat.specularIntensity
+        specularIntensity: mat.specularIntensity,
+        shininess: mat.shininess,
+        reflectivity: mat.reflectivity,
+        colorHex
       });
     }
     const type = forcedType || classifyMaterial(mat);
@@ -592,14 +629,31 @@
       if ("sheen" in mat) mat.sheen = 0;
       if ("sheenRoughness" in mat) mat.sheenRoughness = 1.0;
       if ("specularIntensity" in mat) mat.specularIntensity = Math.min(typeof mat.specularIntensity === "number" ? mat.specularIntensity : 1, 0.2);
+      if ("shininess" in mat) mat.shininess = 0;
+      if ("reflectivity" in mat) mat.reflectivity = 0;
+      try {
+        if (mat.specular && typeof mat.specular.setRGB === "function") mat.specular.setRGB(0, 0, 0);
+      } catch {}
+      try {
+        if (mat.color && typeof mat.color.getHex === "function") {
+          const hex = mat.color.getHex();
+          const r = ((hex >> 16) & 255) / 255;
+          const g = ((hex >> 8) & 255) / 255;
+          const b = (hex & 255) / 255;
+          const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          if (l < 0.18 && typeof mat.color.setHex === "function") mat.color.setHex(0xbfc3c7);
+        }
+      } catch {}
     } else if (type === "metal" || metalness > 0.6) {
       mat.metalness = Math.max(metalness, 0.9);
       mat.roughness = Math.min(roughness, 0.35);
       mat.envMapIntensity = Math.max(env, 0.9);
+      if ("shininess" in mat) mat.shininess = Math.max(typeof mat.shininess === "number" ? mat.shininess : 30, 30);
     } else {
       mat.metalness = Math.min(metalness, 0.1);
       mat.roughness = Math.max(roughness, 0.85);
       mat.envMapIntensity = Math.min(env, 0.4);
+      if ("shininess" in mat) mat.shininess = Math.min(typeof mat.shininess === "number" ? mat.shininess : 10, 10);
     }
     try {
       mat.needsUpdate = true;
@@ -666,6 +720,11 @@
         if ("sheen" in mat) mat.sheen = o.sheen;
         if ("sheenRoughness" in mat) mat.sheenRoughness = o.sheenRoughness;
         if ("specularIntensity" in mat) mat.specularIntensity = o.specularIntensity;
+        if ("shininess" in mat) mat.shininess = o.shininess;
+        if ("reflectivity" in mat) mat.reflectivity = o.reflectivity;
+        try {
+          if (o.colorHex !== null && mat.color && typeof mat.color.setHex === "function") mat.color.setHex(o.colorHex);
+        } catch {}
         mat.needsUpdate = true;
       } catch {}
     });
