@@ -459,6 +459,29 @@
     }
   }
 
+  function collectMaterials(view, scene, limit = 80) {
+    const root = (view && (view.root || view._root)) || scene;
+    if (!root || typeof root !== "object") return [];
+    const map = new Map();
+    traverseMaterials(root, (m) => {
+      if (!m || typeof m !== "object") return;
+      const name = (m.name && String(m.name).trim()) || "(no-name)";
+      const type = m.type || "";
+      const key = name + "|" + type;
+      const rec = map.get(key) || {
+        name,
+        type,
+        count: 0,
+        metalness: typeof m.metalness === "number" ? m.metalness : null,
+        roughness: typeof m.roughness === "number" ? m.roughness : null,
+        envMapIntensity: typeof m.envMapIntensity === "number" ? m.envMapIntensity : null
+      };
+      rec.count += 1;
+      map.set(key, rec);
+    });
+    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, limit);
+  }
+
   function applyMaterialTuning(view, scene) {
     const root = (view && (view.root || view._root)) || scene;
     traverseMaterials(root, tuneOneMaterial);
@@ -495,6 +518,9 @@
     const renderer = resolveRenderer(app, view);
     if (!renderer) return false;
     const scene = view.scene || view._scene || null;
+    try {
+      window.__revitget_dbg = { app, view, renderer, scene };
+    } catch {}
 
     patchFormatButtons();
     patchFileInputs();
@@ -543,6 +569,9 @@
         } catch {}
         applyPageBg(true);
         applyMaterialTuning(view, scene);
+        try {
+          window.__revitget_dbg = { app, view, renderer, scene, materials: collectMaterials(view, scene, 120) };
+        } catch {}
         if (scene) {
           try {
             if (scene.background && scene.background.isColor && typeof scene.background.setHex === "function") {
@@ -571,6 +600,9 @@
         } catch {}
         applyPageBg(false);
         restoreMaterialTuning(view, scene);
+        try {
+          if (window.__revitget_dbg) window.__revitget_dbg.materials = collectMaterials(view, scene, 120);
+        } catch {}
         if (scene && scene.__revitget_orig_bg !== undefined) {
           try {
             scene.background = scene.__revitget_orig_bg;
