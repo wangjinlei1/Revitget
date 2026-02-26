@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using Microsoft.Win32;
 using System.Collections.Generic;
@@ -135,6 +135,10 @@ namespace Revitget.glTF
                         var binData = allBinaryDatas[i];
                         var data = binData.dracoData;
                         var size = binData.dracoSize;
+                        if (data == IntPtr.Zero || size <= 0)
+                        {
+                            throw new InvalidOperationException("Draco 压缩结果为空，导出的模型可能无效。建议关闭 Draco 压缩重试。");
+                        }
                         unsafe
                         {
                             byte* memBytePtr = (byte*)data.ToPointer();
@@ -584,12 +588,23 @@ namespace Revitget.glTF
 
                     if (setting.useDraco)
                     {
+                        if (bufferData.vertexBuffer.Count == 0 || bufferData.indexBuffer.Count == 0)
+                        {
+                            throw new InvalidOperationException("启用 Draco 时，POSITION 与 indices 不能为空。请取消勾选 Draco 压缩后重试。");
+                        }
                         primative.extensions = new glTFPrimitiveExtensions();
                         var dracoPrimative = primative.extensions.KHR_draco_mesh_compression;
                         dracoPrimative.bufferView = dracoBufferViews.Count;
-                        dracoPrimative.attributes.POSITION = 0;
-                        dracoPrimative.attributes.NORMAL = 1;
-                        dracoPrimative.attributes.TEXCOORD_0 = 2;
+                        int dracoAttrId = 0;
+                        dracoPrimative.attributes.POSITION = dracoAttrId++;
+                        if (bufferData.uvBuffer.Count > 0)
+                        {
+                            dracoPrimative.attributes.TEXCOORD_0 = dracoAttrId++;
+                        }
+                        if (bufferData.normalBuffer.Count > 0)
+                        {
+                            dracoPrimative.attributes.NORMAL = dracoAttrId++;
+                        }
                         int byteOffset = 0;
                         int byteLength = 0;
                         var dracoBufferView = glTFUtil.addBufferView(0, byteOffset, byteLength);
