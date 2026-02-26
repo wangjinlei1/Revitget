@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using Autodesk.Revit.Attributes;
+﻿﻿﻿﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Revitget.glTF;
@@ -51,7 +51,8 @@ namespace Revitget
                     {
                         useDraco = (bool)mainWindow.useDraco.IsChecked,
                         fileName = mainWindow.fileName.Text,
-                        exportProperty = (bool)mainWindow.exportProperty.IsChecked
+                        exportProperty = (bool)mainWindow.exportProperty.IsChecked,
+                        useMepSystemColor = (bool)mainWindow.useMepSystemColor.IsChecked
                     };
                     var context = new glTFExportContext(doc, setting);
                     var exporter = new CustomExporter(doc, context)

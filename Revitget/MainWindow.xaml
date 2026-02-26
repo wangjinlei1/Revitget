@@ -1,4 +1,4 @@
-﻿<Window x:Class="Revitget.MainWindow"
+<Window x:Class="Revitget.MainWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -6,13 +6,14 @@
              xmlns:local="clr-namespace:Revitget"
              mc:Ignorable="d" 
               Title="Revitget"
-             Height="200" Width="500">
+             Height="240" Width="500">
     <Grid>
         <Label Content="glTF 路径：" HorizontalAlignment="Left" Margin="23,7,0,0" VerticalAlignment="Top"/>
         <TextBox  x:Name="fileName" HorizontalAlignment="Left" Height="23" Margin="95,7,0,0" TextWrapping="Wrap"  VerticalAlignment="Top" Width="267"/>
         <Button Content="选择..." HorizontalAlignment="Left" Margin="388,10,0,0" VerticalAlignment="Top" Width="75" Click="Button_Open"/>
         <CheckBox x:Name="useDraco" Content="启用 Draco 压缩" HorizontalAlignment="Left" Margin="203,44,0,0" VerticalAlignment="Top" IsChecked="True"/>
         <CheckBox x:Name="exportProperty" Content="导出 Revit 属性集" HorizontalAlignment="Left" Margin="203,75,0,0" VerticalAlignment="Top" IsChecked="True"/>
-        <Button Content="开始导出" HorizontalAlignment="Left" Margin="203,110,0,0" VerticalAlignment="Top" Width="75" Click="Button_Start"/>
+        <CheckBox x:Name="useMepSystemColor" Content="按系统颜色导出管道/管件" HorizontalAlignment="Left" Margin="203,106,0,0" VerticalAlignment="Top" IsChecked="False"/>
+        <Button Content="开始导出" HorizontalAlignment="Left" Margin="203,141,0,0" VerticalAlignment="Top" Width="75" Click="Button_Start"/>
     </Grid>
 </Window>

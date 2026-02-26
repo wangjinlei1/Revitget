@@ -38,6 +38,11 @@ namespace Revitget.glTF
         private Dictionary<string, int> MapSymbolId = new Dictionary<string, int>();
         private string _curSymbolId;
         private Element _element;
+        private bool _mepSystemColorActive;
+        private byte _mepR;
+        private byte _mepG;
+        private byte _mepB;
+        private string _mepMaterialKey;
 
         private List<int> _elementInstanceNodelist = new List<int>();
 
@@ -53,6 +58,212 @@ namespace Revitget.glTF
                 _exportError = ex;
             }
             _exportCanceled = true;
+        }
+
+        private void ResetMepSystemColor()
+        {
+            _mepSystemColorActive = false;
+            _mepR = 0;
+            _mepG = 0;
+            _mepB = 0;
+            _mepMaterialKey = null;
+        }
+
+        private static bool TryGetRgb(Color c, out byte r, out byte g, out byte b)
+        {
+            r = 0;
+            g = 0;
+            b = 0;
+            if (c == null) return false;
+            try
+            {
+                r = c.Red;
+                g = c.Green;
+                b = c.Blue;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsMepSystemColorTarget(Element e)
+        {
+            try
+            {
+                var cat = e == null ? null : e.Category;
+                var id = cat == null ? null : cat.Id;
+                if (id == null) return false;
+                var v = id.IntegerValue;
+                return v == (int)BuiltInCategory.OST_PipeCurves
+                    || v == (int)BuiltInCategory.OST_FlexPipeCurves
+                    || v == (int)BuiltInCategory.OST_PipeFitting
+                    || v == (int)BuiltInCategory.OST_PipeAccessory
+                    || v == (int)BuiltInCategory.OST_DuctCurves
+                    || v == (int)BuiltInCategory.OST_FlexDuctCurves
+                    || v == (int)BuiltInCategory.OST_DuctFitting
+                    || v == (int)BuiltInCategory.OST_DuctAccessory;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static ElementId TryGetSystemTypeIdFromParams(Element e)
+        {
+            try
+            {
+                if (e == null) return ElementId.InvalidElementId;
+                var p1 = e.get_Parameter(BuiltInParameter.RBS_PIPING_SYSTEM_TYPE_PARAM);
+                if (p1 != null && p1.StorageType == StorageType.ElementId)
+                {
+                    var id = p1.AsElementId();
+                    if (id != null && id != ElementId.InvalidElementId) return id;
+                }
+            }
+            catch
+            {
+            }
+            try
+            {
+                if (e == null) return ElementId.InvalidElementId;
+                var p2 = e.get_Parameter(BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM);
+                if (p2 != null && p2.StorageType == StorageType.ElementId)
+                {
+                    var id = p2.AsElementId();
+                    if (id != null && id != ElementId.InvalidElementId) return id;
+                }
+            }
+            catch
+            {
+            }
+            return ElementId.InvalidElementId;
+        }
+
+        private static IEnumerable<Connector> TryGetConnectors(Element e)
+        {
+            if (e == null) yield break;
+            object cm = null;
+            try
+            {
+                var p = e.GetType().GetProperty("ConnectorManager");
+                if (p != null) cm = p.GetValue(e, null);
+            }
+            catch
+            {
+                cm = null;
+            }
+            if (cm == null)
+            {
+                try
+                {
+                    var pm = e.GetType().GetProperty("MEPModel");
+                    var mep = pm == null ? null : pm.GetValue(e, null);
+                    if (mep != null)
+                    {
+                        var pcm = mep.GetType().GetProperty("ConnectorManager");
+                        if (pcm != null) cm = pcm.GetValue(mep, null);
+                    }
+                }
+                catch
+                {
+                    cm = null;
+                }
+            }
+            if (cm == null) yield break;
+            object connectors = null;
+            try
+            {
+                var pc = cm.GetType().GetProperty("Connectors");
+                if (pc != null) connectors = pc.GetValue(cm, null);
+            }
+            catch
+            {
+                connectors = null;
+            }
+            var enumerable = connectors as System.Collections.IEnumerable;
+            if (enumerable == null) yield break;
+            foreach (var it in enumerable)
+            {
+                var c = it as Connector;
+                if (c != null) yield return c;
+            }
+        }
+
+        private bool TryGetMepSystemColor(Element e, out byte r, out byte g, out byte b)
+        {
+            r = 0;
+            g = 0;
+            b = 0;
+            if (doc == null || e == null) return false;
+            var sysTypeId = TryGetSystemTypeIdFromParams(e);
+            if (sysTypeId == null || sysTypeId == ElementId.InvalidElementId)
+            {
+                foreach (var c in TryGetConnectors(e))
+                {
+                    ConnectorSet refs = null;
+                    try
+                    {
+                        refs = c.AllRefs;
+                    }
+                    catch
+                    {
+                        refs = null;
+                    }
+                    if (refs == null) continue;
+                    foreach (Connector rc in refs)
+                    {
+                        if (rc == null) continue;
+                        Element owner = null;
+                        try
+                        {
+                            owner = rc.Owner;
+                        }
+                        catch
+                        {
+                            owner = null;
+                        }
+                        if (owner == null) continue;
+                        if (owner.Id == e.Id) continue;
+                        var id = TryGetSystemTypeIdFromParams(owner);
+                        if (id != null && id != ElementId.InvalidElementId)
+                        {
+                            sysTypeId = id;
+                            break;
+                        }
+                    }
+                    if (sysTypeId != null && sysTypeId != ElementId.InvalidElementId) break;
+                }
+            }
+            if (sysTypeId == null || sysTypeId == ElementId.InvalidElementId) return false;
+            var sysType = doc.GetElement(sysTypeId);
+            if (sysType == null) return false;
+            Color c0 = null;
+            try
+            {
+                var p = sysType.GetType().GetProperty("LineColor");
+                if (p != null && typeof(Color).IsAssignableFrom(p.PropertyType)) c0 = p.GetValue(sysType, null) as Color;
+            }
+            catch
+            {
+                c0 = null;
+            }
+            if (c0 == null)
+            {
+                try
+                {
+                    var p = sysType.GetType().GetProperty("Color");
+                    if (p != null && typeof(Color).IsAssignableFrom(p.PropertyType)) c0 = p.GetValue(sysType, null) as Color;
+                }
+                catch
+                {
+                    c0 = null;
+                }
+            }
+            if (c0 == null) return false;
+            return TryGetRgb(c0, out r, out g, out b);
         }
         public glTFExportContext(Document document, glTFSetting exportSetting)
         {
@@ -463,11 +674,40 @@ namespace Revitget.glTF
             {
                 _elementInstanceNodelist.Clear();
                 _curSymbolId = null;
+                curMaterialName = null;
+                ResetMepSystemColor();
                 if (doc == null)
                 {
                     return RenderNodeAction.Skip;
                 }
                 _element = doc.GetElement(elementId);
+                if (setting.useMepSystemColor && IsMepSystemColorTarget(_element))
+                {
+                    byte r, g, b;
+                    if (TryGetMepSystemColor(_element, out r, out g, out b))
+                    {
+                        _mepSystemColorActive = true;
+                        _mepR = r;
+                        _mepG = g;
+                        _mepB = b;
+                        _mepMaterialKey = string.Format("sys_r{0}g{1}b{2}", r, g, b);
+                        curMaterialName = _mepMaterialKey;
+                        if (!MapMaterial.ContainsKey(_mepMaterialKey))
+                        {
+                            var gl_mat = new glTFMaterial();
+                            gl_mat.name = _mepMaterialKey;
+                            gl_mat.index = glTF.materials.Count;
+                            gl_mat.pbrMetallicRoughness = new glTFPBR
+                            {
+                                baseColorFactor = new List<double>() { r / 255f, g / 255f, b / 255f, 1f },
+                                metallicFactor = 0f,
+                                roughnessFactor = 1f
+                            };
+                            glTF.materials.Add(gl_mat);
+                            MapMaterial.Add(_mepMaterialKey, gl_mat);
+                        }
+                    }
+                }
                 curMapBinaryData = new Dictionary<string, glTFBinaryData>();
                 return RenderNodeAction.Proceed;
             }
@@ -806,6 +1046,29 @@ namespace Revitget.glTF
             }
             try
             {
+            if (setting.useMepSystemColor && _mepSystemColorActive && !string.IsNullOrWhiteSpace(_mepMaterialKey))
+            {
+                curMaterialName = _mepMaterialKey;
+                if (!MapMaterial.ContainsKey(curMaterialName))
+                {
+                    var gl_mat = new glTFMaterial();
+                    gl_mat.name = curMaterialName;
+                    gl_mat.index = glTF.materials.Count;
+                    gl_mat.pbrMetallicRoughness = new glTFPBR
+                    {
+                        baseColorFactor = new List<double>() { _mepR / 255f, _mepG / 255f, _mepB / 255f, 1f },
+                        metallicFactor = 0f,
+                        roughnessFactor = 1f
+                    };
+                    glTF.materials.Add(gl_mat);
+                    MapMaterial.Add(curMaterialName, gl_mat);
+                }
+                if (!curMapBinaryData.ContainsKey(curMaterialName))
+                {
+                    curMapBinaryData.Add(curMaterialName, new glTFBinaryData());
+                }
+                return;
+            }
             ElementId id = node.MaterialId;
             double alpha = Math.Round(node.Transparency, 2);
             if (id != ElementId.InvalidElementId)

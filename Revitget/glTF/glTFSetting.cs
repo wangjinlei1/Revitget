@@ -12,11 +12,14 @@ namespace Revitget.glTF
         {
             useDraco = false;
             exportProperty = false;
+            useMepSystemColor = false;
         }
 
         public bool useDraco { get; set; }
         public string fileName { get; set; }
 
         public bool exportProperty { get; set; }
+
+        public bool useMepSystemColor { get; set; }
     }
 }
