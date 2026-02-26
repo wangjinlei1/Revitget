@@ -12,6 +12,50 @@ let baselineRootBg = null;
 let restoreScheduled = false;
 let baselineCaptured = false;
 let restoreFramesLeft = 0;
+let baselineClearRGBA = null;
+let webglClearHooked = false;
+
+function hookWebglClearOnce() {
+  if (webglClearHooked) return;
+  webglClearHooked = true;
+
+  function wrap(Proto) {
+    if (!Proto || Proto.__revitget_sel_patched_clearColor) return;
+    Proto.__revitget_sel_patched_clearColor = true;
+    const origClearColor = typeof Proto.clearColor === "function" ? Proto.clearColor : null;
+    const origClear = typeof Proto.clear === "function" ? Proto.clear : null;
+    if (origClearColor) {
+      Proto.clearColor = function (r, g, b, a) {
+        try {
+          const f = window.__revitget_force_clear_rgba;
+          if (f && typeof f.r === "number" && typeof f.g === "number" && typeof f.b === "number") {
+            return origClearColor.call(this, f.r, f.g, f.b, typeof f.a === "number" ? f.a : 1);
+          }
+        } catch {}
+        return origClearColor.call(this, r, g, b, a);
+      };
+    }
+    if (origClear) {
+      Proto.clear = function (mask) {
+        try {
+          const f = window.__revitget_force_clear_rgba;
+          const bit = this && this.COLOR_BUFFER_BIT;
+          if (f && bit && (mask & bit) && origClearColor) {
+            origClearColor.call(this, f.r, f.g, f.b, typeof f.a === "number" ? f.a : 1);
+          }
+        } catch {}
+        return origClear.call(this, mask);
+      };
+    }
+  }
+
+  try {
+    wrap(window.WebGLRenderingContext && window.WebGLRenderingContext.prototype);
+  } catch {}
+  try {
+    wrap(window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype);
+  } catch {}
+}
 
 function tryGet(obj, path) {
   let cur = obj;
@@ -153,6 +197,41 @@ function snapshotRendererAndPage(renderer, scene) {
     baselineRendererState = baselineRendererState ?? null;
   }
   try {
+    if (baselineClearRGBA == null) {
+      let hex = null;
+      let alpha = null;
+      try {
+        const clearColor = renderer && renderer._clearColor ? renderer._clearColor : null;
+        hex = getHexSafe(clearColor);
+      } catch {
+        hex = null;
+      }
+      try {
+        alpha =
+          typeof renderer.getClearAlpha === "function"
+            ? renderer.getClearAlpha()
+            : typeof renderer._clearAlpha === "number"
+              ? renderer._clearAlpha
+              : null;
+      } catch {
+        alpha = null;
+      }
+      if (typeof hex === "number") {
+        baselineClearRGBA = {
+          r: ((hex >> 16) & 255) / 255,
+          g: ((hex >> 8) & 255) / 255,
+          b: (hex & 255) / 255,
+          a: typeof alpha === "number" ? alpha : 1
+        };
+        try {
+          window.__revitget_force_clear_rgba = baselineClearRGBA;
+        } catch {}
+      }
+    }
+  } catch {
+    baselineClearRGBA = baselineClearRGBA ?? null;
+  }
+  try {
     const el = renderer && renderer.domElement ? renderer.domElement : null;
     if (el && baselineCanvasStyle == null) {
       const s = el.style || null;
@@ -192,6 +271,7 @@ function captureBaseline(app) {
     baselineCanvasStyle = null;
   }
   ensureUniqueMaterials(scene);
+  hookWebglClearOnce();
   snapshotRendererAndPage(renderer, scene);
   try {
     scene.traverse((o) => snapshotObject(o));
@@ -279,6 +359,9 @@ function restoreRendererAndPage(app) {
       if (scene.environment !== baselineSceneState.environment) scene.environment = baselineSceneState.environment;
       if (scene.fog !== baselineSceneState.fog) scene.fog = baselineSceneState.fog;
     }
+  } catch {}
+  try {
+    if (baselineClearRGBA) window.__revitget_force_clear_rgba = baselineClearRGBA;
   } catch {}
   try {
     if (baselineCanvasStyle) {
@@ -388,6 +471,37 @@ function tick() {
     if (app) {
       bindSelectionGuard(app);
       if (!baselineCaptured) captureBaseline(app);
+      if (baselineCaptured) {
+        const view = getView(app);
+        const scene = getScene(view);
+        const renderer = getRenderer(view);
+        try {
+          if (baselineClearRGBA) window.__revitget_force_clear_rgba = baselineClearRGBA;
+        } catch {}
+        try {
+          if (scene && baselineSceneRef === scene && baselineSceneState) {
+            const bg = baselineSceneState.background;
+            const bgHex = baselineSceneState.backgroundHex;
+            if (scene.background !== bg) scene.background = bg;
+            if (bgHex != null) {
+              const curBg = scene.background;
+              if (curBg) setHexSafe(curBg, bgHex);
+            }
+            if (scene.environment !== baselineSceneState.environment) scene.environment = baselineSceneState.environment;
+            if (scene.fog !== baselineSceneState.fog) scene.fog = baselineSceneState.fog;
+          }
+        } catch {}
+        try {
+          if (renderer && baselineRendererState) {
+            if (baselineRendererState.toneMappingExposure != null && typeof renderer.toneMappingExposure === "number") {
+              renderer.toneMappingExposure = baselineRendererState.toneMappingExposure;
+            }
+            if (baselineRendererState.toneMapping != null && typeof renderer.toneMapping === "number") {
+              renderer.toneMapping = baselineRendererState.toneMapping;
+            }
+          }
+        } catch {}
+      }
     }
   } catch {}
   requestAnimationFrame(tick);
