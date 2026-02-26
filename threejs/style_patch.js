@@ -351,6 +351,161 @@
     return app ? deepFind(app, isRendererCandidate, 8, 7000) : null;
   }
 
+  function isThreeRenderer(r) {
+    if (!r || typeof r !== "object") return false;
+    const canvas = r.domElement || null;
+    if (!(canvas && canvas.tagName === "CANVAS")) return false;
+    if (typeof r.render !== "function") return false;
+    return true;
+  }
+
+  function findRendererGlobal() {
+    try {
+      return deepFind(window, isThreeRenderer, 5, 25000);
+    } catch {
+      return null;
+    }
+  }
+
+  const meshOrigMat = new WeakMap();
+  let __revitget_tune_ver = 1;
+
+  function nodeNameChain(node, maxUp = 3) {
+    let out = "";
+    let cur = node;
+    let i = 0;
+    while (cur && i < maxUp) {
+      const n = cur && cur.name ? String(cur.name) : "";
+      if (n) out += " " + n;
+      cur = cur.parent || null;
+      i += 1;
+    }
+    return out.trim().toLowerCase();
+  }
+
+  function classifyMesh(node) {
+    const n = nodeNameChain(node, 4);
+    if (!n) return "";
+    if (
+      n.includes("steel") ||
+      n.includes("metal") ||
+      n.includes("stainless") ||
+      n.includes("rebar") ||
+      n.includes("beam") ||
+      n.includes("girder") ||
+      n.includes("pipe") ||
+      n.includes("duct") ||
+      n.includes("不锈") ||
+      n.includes("金属") ||
+      n.includes("钢") ||
+      n.includes("梁") ||
+      n.includes("筋")
+    ) {
+      return "metal";
+    }
+    if (
+      n.includes("concrete") ||
+      n.includes("cement") ||
+      n.includes("slab") ||
+      n.includes("wall") ||
+      n.includes("floor") ||
+      n.includes("foundation") ||
+      n.includes("混凝土") ||
+      n.includes("砼") ||
+      n.includes("楼板") ||
+      n.includes("墙") ||
+      n.includes("基础")
+    ) {
+      return "concrete";
+    }
+    return "";
+  }
+
+  function cloneMaterialForMesh(mesh) {
+    const mat = mesh && mesh.material;
+    if (!mat) return;
+    if (!meshOrigMat.has(mesh)) meshOrigMat.set(mesh, mat);
+    try {
+      if (Array.isArray(mat)) {
+        mesh.material = mat.map((m) => (m && typeof m.clone === "function" ? m.clone() : m));
+      } else if (mat && typeof mat.clone === "function") {
+        mesh.material = mat.clone();
+      }
+    } catch {}
+  }
+
+  function tuneMeshMaterials(mesh) {
+    if (!mesh || typeof mesh !== "object") return;
+    if (!mesh.material) return;
+    if (mesh.__revitget_tuned_ver === __revitget_tune_ver) return;
+    const forced = classifyMesh(mesh);
+    if (forced) cloneMaterialForMesh(mesh);
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mats) {
+      if (!m) continue;
+      const type = forced || classifyMaterial(m) || ((typeof m.metalness === "number" && m.metalness > 0.6) ? "metal" : "concrete");
+      tuneOneMaterial(m, type);
+    }
+    try {
+      mesh.__revitget_tuned_ver = __revitget_tune_ver;
+    } catch {}
+  }
+
+  function applyMaterialTuningFromScene(scene) {
+    if (!scene || typeof scene !== "object" || typeof scene.traverse !== "function") return;
+    scene.traverse((node) => {
+      if (!node) return;
+      if (node.isMesh || node.isSkinnedMesh || node.isInstancedMesh) {
+        tuneMeshMaterials(node);
+      }
+    });
+  }
+
+  function restoreMaterialTuningFromScene(scene) {
+    if (!scene || typeof scene !== "object" || typeof scene.traverse !== "function") return;
+    scene.traverse((node) => {
+      if (!node || !meshOrigMat.has(node)) return;
+      try {
+        node.material = meshOrigMat.get(node);
+      } catch {}
+    });
+    __revitget_tune_ver += 1;
+  }
+
+  function patchRendererRender(renderer) {
+    if (!renderer || renderer.__revitget_patched_render) return;
+    if (typeof renderer.render !== "function") return;
+    renderer.__revitget_patched_render = true;
+    const orig = renderer.render.bind(renderer);
+    renderer.render = function (scene, camera) {
+      try {
+        window.__revitget_dbg = window.__revitget_dbg || {};
+        window.__revitget_dbg.renderer = renderer;
+        window.__revitget_dbg.scene = scene || null;
+        window.__revitget_dbg.camera = camera || null;
+        if (scene) window.__revitget_dbg.materials = collectMaterials({ root: scene }, scene, 120);
+      } catch {}
+      try {
+        if (window.__revitget_force_glb_light_bg && scene) {
+          applyMaterialTuningFromScene(scene);
+        }
+      } catch {}
+      return orig(scene, camera);
+    };
+  }
+
+  function ensureRendererHooked() {
+    if (window.__revitget_renderer_hooked) return;
+    const r = findRendererGlobal();
+    if (!r) return;
+    window.__revitget_renderer_hooked = true;
+    patchRendererRender(r);
+    try {
+      window.__revitget_dbg = window.__revitget_dbg || {};
+      window.__revitget_dbg.renderer = r;
+    } catch {}
+  }
+
   function applyGlbEnvTuning(app) {
     if (!app || typeof app.setEmviormentParameter !== "function") return;
     const keys = ["roughnessPower", "radianceIntensity", "envPower", "smoothingPower"];
@@ -408,7 +563,7 @@
 
   const materialOrig = new WeakMap();
 
-  function tuneOneMaterial(mat) {
+  function tuneOneMaterial(mat, forcedType) {
     if (!mat || typeof mat !== "object") return;
     if (!("roughness" in mat) && !("metalness" in mat)) return;
     if (!materialOrig.has(mat)) {
@@ -423,7 +578,7 @@
         specularIntensity: mat.specularIntensity
       });
     }
-    const type = classifyMaterial(mat);
+    const type = forcedType || classifyMaterial(mat);
     const metalness = typeof mat.metalness === "number" ? mat.metalness : 0;
     const roughness = typeof mat.roughness === "number" ? mat.roughness : 1;
     const env = typeof mat.envMapIntensity === "number" ? mat.envMapIntensity : 1;
@@ -530,6 +685,9 @@
         window.__revitget_dbg = window.__revitget_dbg || {};
         window.__revitget_dbg.app = null;
       } catch {}
+      try {
+        ensureRendererHooked();
+      } catch {}
       return false;
     }
 
@@ -546,11 +704,17 @@
         window.__revitget_dbg.view = view;
         window.__revitget_dbg.renderer = null;
       } catch {}
+      try {
+        ensureRendererHooked();
+      } catch {}
       return false;
     }
     const scene = view.scene || view._scene || null;
     try {
       window.__revitget_dbg = { app, view, renderer, scene };
+    } catch {}
+    try {
+      patchRendererRender(renderer);
     } catch {}
 
     patchFormatButtons();
