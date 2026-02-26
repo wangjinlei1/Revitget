@@ -811,11 +811,11 @@ namespace Revitget.glTF
             if (id != ElementId.InvalidElementId)
             {
                 Element m = doc.GetElement(node.MaterialId);
-                curMaterialName = m == null ? "material_" + node.MaterialId.IntegerValue.ToString() : m.Name;
+                curMaterialName = "material_" + node.MaterialId.IntegerValue.ToString();
                 if (!MapMaterial.ContainsKey(curMaterialName))
                 {
                     glTFMaterial gl_mat = new glTFMaterial();
-                    gl_mat.name = curMaterialName;
+                    gl_mat.name = m == null ? curMaterialName : m.Name;
                     glTFPBR pbr = new glTFPBR();
                     if (alpha != 0)
                     {
