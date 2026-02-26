@@ -7,6 +7,7 @@ let baselineSceneState = null;
 let baselineRendererRef = null;
 let baselineRendererState = null;
 let baselineCanvasStyle = null;
+let baselineCanvasComputed = null;
 let baselineDomBg = null;
 let baselineRootBg = null;
 let restoreScheduled = false;
@@ -239,6 +240,7 @@ function snapshotRendererAndPage(renderer, scene) {
         ? {
             backgroundColor: s.backgroundColor ?? null,
             filter: s.filter ?? null,
+            webkitFilter: s.webkitFilter ?? null,
             opacity: s.opacity ?? null,
             mixBlendMode: s.mixBlendMode ?? null
           }
@@ -246,6 +248,22 @@ function snapshotRendererAndPage(renderer, scene) {
     }
   } catch {
     baselineCanvasStyle = baselineCanvasStyle ?? null;
+  }
+  try {
+    const el = renderer && renderer.domElement ? renderer.domElement : null;
+    if (el && baselineCanvasComputed == null && typeof window.getComputedStyle === "function") {
+      const cs = window.getComputedStyle(el);
+      baselineCanvasComputed = cs
+        ? {
+            filter: cs.filter ?? null,
+            opacity: cs.opacity ?? null,
+            backgroundColor: cs.backgroundColor ?? null,
+            mixBlendMode: cs.mixBlendMode ?? null
+          }
+        : null;
+    }
+  } catch {
+    baselineCanvasComputed = baselineCanvasComputed ?? null;
   }
   try {
     baselineDomBg = document && document.body && document.body.style ? document.body.style.backgroundColor : null;
@@ -269,6 +287,7 @@ function captureBaseline(app) {
     baselineSceneState = null;
     baselineRendererState = null;
     baselineCanvasStyle = null;
+    baselineCanvasComputed = null;
   }
   ensureUniqueMaterials(scene);
   hookWebglClearOnce();
@@ -370,9 +389,25 @@ function restoreRendererAndPage(app) {
       if (s) {
         if (baselineCanvasStyle.backgroundColor != null) s.backgroundColor = baselineCanvasStyle.backgroundColor;
         if (baselineCanvasStyle.filter != null) s.filter = baselineCanvasStyle.filter;
+        if (baselineCanvasStyle.webkitFilter != null) s.webkitFilter = baselineCanvasStyle.webkitFilter;
         if (baselineCanvasStyle.opacity != null) s.opacity = baselineCanvasStyle.opacity;
         if (baselineCanvasStyle.mixBlendMode != null) s.mixBlendMode = baselineCanvasStyle.mixBlendMode;
       }
+    }
+  } catch {}
+  try {
+    const el = renderer && renderer.domElement ? renderer.domElement : null;
+    if (el && el.style && typeof el.style.setProperty === "function") {
+      const f = baselineCanvasComputed ? baselineCanvasComputed.filter : null;
+      const o = baselineCanvasComputed ? baselineCanvasComputed.opacity : null;
+      const bg = baselineCanvasComputed ? baselineCanvasComputed.backgroundColor : null;
+      const mb = baselineCanvasComputed ? baselineCanvasComputed.mixBlendMode : null;
+
+      el.style.setProperty("filter", f != null ? f : "none", "important");
+      el.style.setProperty("-webkit-filter", f != null ? f : "none", "important");
+      if (o != null) el.style.setProperty("opacity", o, "important");
+      if (bg != null) el.style.setProperty("background-color", bg, "important");
+      if (mb != null) el.style.setProperty("mix-blend-mode", mb, "important");
     }
   } catch {}
   try {
