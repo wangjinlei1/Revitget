@@ -14,7 +14,7 @@
   const LIGHT = "#f2f3f5";
   const DARK = "";
   const LIGHT_HEX = 0xf2f3f5;
-  const VERSION = "v5";
+  const VERSION = "v7";
   let retryTimer = null;
   let retryTries = 0;
 
@@ -184,6 +184,8 @@
       b.style.fontSize = "12px";
       b.style.lineHeight = "16px";
       b.style.pointerEvents = "auto";
+      b.style.position = "relative";
+      b.style.zIndex = "2147483647";
       return b;
     };
 
@@ -218,30 +220,18 @@
     setActive(btnLight, btnDark, mode);
 
     const bind = (btn, mode) => {
-      btn.addEventListener(
-        "pointerdown",
-        (e) => {
-          try {
-            e.stopPropagation();
-            e.preventDefault();
-          } catch {}
-          applyMode(mode);
-          setActive(btnLight, btnDark, mode);
-        },
-        { capture: true }
-      );
-      btn.addEventListener(
-        "click",
-        (e) => {
-          try {
-            e.stopPropagation();
-            e.preventDefault();
-          } catch {}
-          applyMode(mode);
-          setActive(btnLight, btnDark, mode);
-        },
-        { capture: true }
-      );
+      const handler = (e) => {
+        try {
+          e.stopPropagation();
+          e.preventDefault();
+          console.log("[BG_PATCH] Button clicked, mode=" + mode);
+        } catch {}
+        applyMode(mode);
+        setActive(btnLight, btnDark, mode);
+      };
+      btn.addEventListener("mousedown", handler, { capture: true });
+      btn.addEventListener("click", handler, { capture: true });
+      btn.addEventListener("pointerdown", handler, { capture: true });
     };
     bind(btnLight, "light");
     bind(btnDark, "dark");

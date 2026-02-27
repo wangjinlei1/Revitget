@@ -12,6 +12,12 @@
 
   const WASM_PATH = "threejs/lib/dwgApi/DwgApi.wasm";
 
+  function log(msg) {
+    try {
+      console.log("[DWG_WASM_PATCH]", msg);
+    } catch {}
+  }
+
   function tryGet(obj, path) {
     let cur = obj;
     for (const key of path) {
@@ -31,16 +37,21 @@
     if (!app) return false;
     if (app.__revitget_dwg_wasm_patched) return true;
     app.__revitget_dwg_wasm_patched = true;
+    log("Patched app.loadModel for DWG/DXF");
 
     const original = app.loadModel.bind(app);
     app.loadModel = function (cfg, ...rest) {
       try {
         if (cfg && typeof cfg === "object") {
           const url = cfg.url || cfg.fileUrl || cfg.path || "";
-          if (url && (/\.(dwg|dxf)$/i.test(url) || cfg.format === "dwg" || cfg.format === "dxf")) {
+          const format = cfg.format || "";
+          log("loadModel called with url=" + url + " format=" + format);
+          if (url && (/\.(dwg|dxf)$/i.test(url) || format === "dwg" || format === "dxf")) {
+            log("Detected DWG/DXF file, injecting locateFile");
             const patched = Object.assign({}, cfg);
             patched.locateFile = function (file) {
               if (/DwgApi\.wasm$/i.test(file)) {
+                log("locateFile called for " + file + " -> " + WASM_PATH);
                 return WASM_PATH;
               }
               return file;
@@ -48,7 +59,9 @@
             return original(patched, ...rest);
           }
         }
-      } catch {}
+      } catch (e) {
+        log("Error in loadModel patch: " + e);
+      }
       return original(cfg, ...rest);
     };
 
@@ -58,6 +71,45 @@
   let tries = 0;
   const timer = setInterval(() => {
     tries += 1;
-    if (patch() || tries > 300) clearInterval(timer);
+    if (patch() || tries > 300) {
+      if (tries > 300) log("Failed to patch after 300 tries");
+      clearInterval(timer);
+    }
   }, 200);
+
+  function hookDwgApiGlobal() {
+    try {
+      const check = setInterval(() => {
+        if (window.DwgApi && typeof window.DwgApi === "function") {
+          clearInterval(check);
+          log("Found global DwgApi constructor");
+          const OrigDwgApi = window.DwgApi;
+          window.DwgApi = function (cfg) {
+            try {
+              log("DwgApi constructor called with cfg=" + JSON.stringify(cfg));
+              if (cfg && typeof cfg === "object") {
+                cfg.locateFile = function (file) {
+                  if (/DwgApi\.wasm$/i.test(file)) {
+                    log("DwgApi locateFile: " + file + " -> " + WASM_PATH);
+                    return WASM_PATH;
+                  }
+                  return file;
+                };
+              }
+            } catch (e) {
+              log("Error in DwgApi hook: " + e);
+            }
+            return new OrigDwgApi(cfg);
+          };
+          window.DwgApi.prototype = OrigDwgApi.prototype;
+          window.DwgApi.prototype.constructor = window.DwgApi;
+          log("Hooked global DwgApi constructor");
+        }
+      }, 200);
+      setTimeout(() => clearInterval(check), 60000);
+    } catch (e) {
+      log("Error setting up DwgApi global hook: " + e);
+    }
+  }
+  hookDwgApiGlobal();
 })();
