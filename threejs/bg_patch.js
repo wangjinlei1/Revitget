@@ -14,6 +14,8 @@
   const LIGHT = "#f2f3f5";
   const DARK = "";
   const LIGHT_HEX = 0xf2f3f5;
+  let retryTimer = null;
+  let retryTries = 0;
 
   function tryGet(obj, path) {
     let cur = obj;
@@ -105,6 +107,34 @@
       }
     } catch {}
     try {
+      if (!renderer && retryTimer == null) {
+        retryTries = 0;
+        retryTimer = setInterval(() => {
+          retryTries += 1;
+          const a = resolveApp();
+          const v = resolveView(a);
+          const r = resolveRenderer(a, v);
+          if (r && typeof r.setClearColor === "function") {
+            try {
+              if (r.__revitget_bg_orig_clear == null) {
+                const cc = r._clearColor || null;
+                const hex = cc && typeof cc.getHex === "function" ? cc.getHex() : null;
+                if (typeof hex === "number") r.__revitget_bg_orig_clear = hex;
+              }
+              if (isLight) r.setClearColor(LIGHT_HEX, 1);
+              else if (typeof r.__revitget_bg_orig_clear === "number") r.setClearColor(r.__revitget_bg_orig_clear, 1);
+              if (r.domElement && r.domElement.style) r.domElement.style.backgroundColor = c;
+            } catch {}
+            clearInterval(retryTimer);
+            retryTimer = null;
+          } else if (retryTries > 25) {
+            clearInterval(retryTimer);
+            retryTimer = null;
+          }
+        }, 200);
+      }
+    } catch {}
+    try {
       const st = safeGetStorage();
       if (st) st.setItem(KEY, isLight ? "light" : "dark");
     } catch {}
@@ -128,9 +158,10 @@
     const wrap = document.createElement("div");
     wrap.id = "revitget-bg-toggle";
     wrap.style.position = "fixed";
-    wrap.style.top = "34px";
+    wrap.style.top = "28px";
     wrap.style.right = "72px";
-    wrap.style.zIndex = "99999";
+    wrap.style.zIndex = "2147483647";
+    wrap.style.pointerEvents = "auto";
     wrap.style.display = "flex";
     wrap.style.gap = "6px";
     wrap.style.padding = "6px 8px";
@@ -151,6 +182,7 @@
       b.style.cursor = "pointer";
       b.style.fontSize = "12px";
       b.style.lineHeight = "16px";
+      b.style.pointerEvents = "auto";
       return b;
     };
 
@@ -184,14 +216,28 @@
     applyMode(mode);
     setActive(btnLight, btnDark, mode);
 
-    btnLight.addEventListener("click", () => {
-      applyMode("light");
-      setActive(btnLight, btnDark, "light");
-    });
-    btnDark.addEventListener("click", () => {
-      applyMode("dark");
-      setActive(btnLight, btnDark, "dark");
-    });
+    const bind = (btn, mode) => {
+      btn.addEventListener(
+        "pointerdown",
+        (e) => {
+          try {
+            e.stopPropagation();
+            e.preventDefault();
+          } catch {}
+        },
+        { capture: true }
+      );
+      btn.addEventListener("click", (e) => {
+        try {
+          e.stopPropagation();
+          e.preventDefault();
+        } catch {}
+        applyMode(mode);
+        setActive(btnLight, btnDark, mode);
+      });
+    };
+    bind(btnLight, "light");
+    bind(btnDark, "dark");
     return true;
   }
 
