@@ -47,6 +47,13 @@
           const format = cfg.format || "";
           const fileName = cfg.fileName || cfg.name || (cfg.file && cfg.file.name) || (cfg.blob && cfg.blob.name) || "";
           log("loadModel called with url=" + url + " format=" + format + " fileName=" + fileName);
+          
+          const isBlobDxf = url && url.startsWith("blob:") && format === "dxf";
+          if (isBlobDxf) {
+            log("Skipping locateFile injection for blob DXF URL");
+            return original(cfg, ...rest);
+          }
+          
           const isDwgDxf = 
             (url && /\.(dwg|dxf)$/i.test(url)) ||
             (fileName && /\.(dwg|dxf)$/i.test(fileName)) ||
