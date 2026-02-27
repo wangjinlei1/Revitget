@@ -39,6 +39,11 @@
     app.__revitget_dwg_wasm_patched = true;
     log("Patched app.loadModel for DWG/DXF");
 
+    if (typeof app.loadModel !== "function") {
+      log("app.loadModel is not a function, skipping patch");
+      return true;
+    }
+
     const original = app.loadModel.bind(app);
     app.loadModel = function (cfg, ...rest) {
       try {
