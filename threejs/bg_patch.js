@@ -13,6 +13,34 @@
   const KEY = "revitget_page_bg";
   const LIGHT = "#f2f3f5";
   const DARK = "";
+  const LIGHT_HEX = 0xf2f3f5;
+
+  function tryGet(obj, path) {
+    let cur = obj;
+    for (const key of path) {
+      if (!cur) return null;
+      try {
+        cur = cur[key];
+      } catch {
+        return null;
+      }
+    }
+    return cur ?? null;
+  }
+
+  function resolveApp() {
+    const root = window.webView ?? window;
+    return tryGet(root, ["app"]) || tryGet(window, ["app"]) || null;
+  }
+
+  function resolveView(app) {
+    if (!app) return null;
+    return app.view || app._view || app.viewer || app._viewer || null;
+  }
+
+  function resolveRenderer(app, view) {
+    return (view && (view.renderer || view._renderer)) || (app && (app.renderer || app._renderer)) || null;
+  }
 
   function safeGetStorage() {
     try {
@@ -41,6 +69,9 @@
   function applyMode(mode) {
     const isLight = mode === "light";
     const c = isLight ? LIGHT : DARK;
+    const app = resolveApp();
+    const view = resolveView(app);
+    const renderer = resolveRenderer(app, view);
     try {
       setBg(document.documentElement, c);
     } catch {}
@@ -50,6 +81,28 @@
     try {
       const appEl = document.getElementById && document.getElementById("app");
       setBg(appEl, c);
+    } catch {}
+    try {
+      if (renderer && typeof renderer.setClearColor === "function") {
+        if (renderer.__revitget_bg_orig_clear == null) {
+          try {
+            const cc = renderer._clearColor || null;
+            const hex = cc && typeof cc.getHex === "function" ? cc.getHex() : null;
+            if (typeof hex === "number") renderer.__revitget_bg_orig_clear = hex;
+          } catch {}
+        }
+        if (isLight) {
+          renderer.setClearColor(LIGHT_HEX, 1);
+        } else {
+          const orig = renderer.__revitget_bg_orig_clear;
+          if (typeof orig === "number") renderer.setClearColor(orig, 1);
+        }
+      }
+    } catch {}
+    try {
+      if (renderer && renderer.domElement && renderer.domElement.style) {
+        renderer.domElement.style.backgroundColor = c;
+      }
     } catch {}
     try {
       const st = safeGetStorage();
@@ -75,7 +128,7 @@
     const wrap = document.createElement("div");
     wrap.id = "revitget-bg-toggle";
     wrap.style.position = "fixed";
-    wrap.style.top = "12px";
+    wrap.style.top = "34px";
     wrap.style.right = "72px";
     wrap.style.zIndex = "99999";
     wrap.style.display = "flex";
@@ -106,27 +159,39 @@
     wrap.appendChild(btnLight);
     wrap.appendChild(btnDark);
     host.appendChild(wrap);
+    try {
+      wrap.addEventListener(
+        "pointerdown",
+        (e) => {
+          try {
+            e.stopPropagation();
+          } catch {}
+        },
+        { capture: true }
+      );
+      wrap.addEventListener(
+        "click",
+        (e) => {
+          try {
+            e.stopPropagation();
+          } catch {}
+        },
+        { capture: true }
+      );
+    } catch {}
 
     const mode = getInitialMode();
     applyMode(mode);
     setActive(btnLight, btnDark, mode);
 
-    btnLight.addEventListener(
-      "click",
-      () => {
-        applyMode("light");
-        setActive(btnLight, btnDark, "light");
-      },
-      { passive: true }
-    );
-    btnDark.addEventListener(
-      "click",
-      () => {
-        applyMode("dark");
-        setActive(btnLight, btnDark, "dark");
-      },
-      { passive: true }
-    );
+    btnLight.addEventListener("click", () => {
+      applyMode("light");
+      setActive(btnLight, btnDark, "light");
+    });
+    btnDark.addEventListener("click", () => {
+      applyMode("dark");
+      setActive(btnLight, btnDark, "dark");
+    });
     return true;
   }
 
