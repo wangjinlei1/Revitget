@@ -23,6 +23,7 @@ const sanitizedEls = new WeakSet();
 let cachedCanvas = null;
 let cachedCanvasRect = null;
 let canvasCacheFrames = 0;
+let overlaySanitizeFrames = 0;
 
 function hookWebglClearOnce() {
   if (webglClearHooked) return;
@@ -278,16 +279,41 @@ function sanitizeViewportOverlays(renderer) {
   if (!canvasRect || getRectArea(canvasRect) < 20000) return;
   cachedCanvasRect = canvasRect;
 
-  const appEl = document && document.getElementById ? document.getElementById("app") : null;
-  if (!appEl || typeof appEl.querySelectorAll !== "function") return;
-
-  let nodes = [];
-  try {
-    nodes = appEl.querySelectorAll("*");
-  } catch {
-    nodes = [];
+  function collectAllElements(root) {
+    const out = [];
+    if (!root) return out;
+    try {
+      if (root.querySelectorAll) {
+        const list = root.querySelectorAll("*");
+        for (let i = 0; i < list.length; i++) out.push(list[i]);
+      }
+    } catch {}
+    return out;
   }
-  const max = Math.min(nodes.length || 0, 3000);
+
+  function collectWithShadow(root) {
+    const out = [];
+    const stack = [];
+    if (root) stack.push(root);
+    let iterations = 0;
+    while (stack.length && iterations < 800) {
+      iterations += 1;
+      const cur = stack.pop();
+      const els = collectAllElements(cur);
+      for (const el of els) {
+        out.push(el);
+        try {
+          const sr = el && el.shadowRoot ? el.shadowRoot : null;
+          if (sr) stack.push(sr);
+        } catch {}
+      }
+    }
+    return out;
+  }
+
+  const root = document && document.body ? document.body : null;
+  const nodes = collectWithShadow(root);
+  const max = Math.min(nodes.length || 0, 6000);
   for (let i = 0; i < max; i++) {
     const el = nodes[i];
     if (!el || el === canvas) continue;
@@ -307,15 +333,21 @@ function sanitizeViewportOverlays(renderer) {
       cs = null;
     }
     const bg = cs ? cs.backgroundColor : null;
+    const bgImg = cs ? cs.backgroundImage : null;
+    const bgAll = cs ? cs.background : null;
     const filter = cs ? cs.filter : null;
     const bf = cs ? (cs.backdropFilter ?? cs.webkitBackdropFilter ?? null) : null;
     const hasBg = bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)";
+    const hasBgImg = bgImg && bgImg !== "none";
+    const hasBgAll = bgAll && bgAll !== "none" && bgAll !== "transparent";
     const hasFilter = filter && filter !== "none";
     const hasBackdrop = bf && bf !== "none";
-    if (!hasBg && !hasFilter && !hasBackdrop) continue;
+    if (!hasBg && !hasBgImg && !hasBgAll && !hasFilter && !hasBackdrop) continue;
     try {
       if (el.style && typeof el.style.setProperty === "function") {
+        el.style.setProperty("background", "transparent", "important");
         el.style.setProperty("background-color", "transparent", "important");
+        el.style.setProperty("background-image", "none", "important");
         el.style.setProperty("filter", "none", "important");
         el.style.setProperty("-webkit-filter", "none", "important");
         el.style.setProperty("backdrop-filter", "none", "important");
@@ -864,24 +896,12 @@ function bindSelectionGuard(app) {
             if (moved || dt > 350) return;
             if (e.button != null && e.button !== 0) return;
             if (e.ctrlKey || e.metaKey || e.altKey) return;
-            e.stopImmediatePropagation();
-            e.stopPropagation();
-            e.preventDefault();
+            overlaySanitizeFrames = Math.max(overlaySanitizeFrames, 40);
+            scheduleRestore(app);
             await pickAndHighlight(app, e.clientX, e.clientY);
           } catch {}
         },
-        { capture: true }
-      );
-      target.addEventListener(
-        "click",
-        (e) => {
-          try {
-            e.stopImmediatePropagation();
-            e.stopPropagation();
-            e.preventDefault();
-          } catch {}
-        },
-        { capture: true }
+        { capture: true, passive: true }
       );
     } catch {}
   }
@@ -933,6 +953,9 @@ function tick() {
           if (canvasCacheFrames > 0) canvasCacheFrames -= 1;
         } catch {}
         try {
+          if (overlaySanitizeFrames > 0) overlaySanitizeFrames -= 1;
+        } catch {}
+        try {
           if (baselineClearRGBA) window.__revitget_force_clear_rgba = baselineClearRGBA;
         } catch {}
         try {
@@ -959,7 +982,7 @@ function tick() {
           }
         } catch {}
         try {
-          if (renderer) sanitizeViewportOverlays(renderer);
+          if (renderer && overlaySanitizeFrames > 0) sanitizeViewportOverlays(renderer);
         } catch {}
       }
     }
