@@ -14,7 +14,7 @@
   const LIGHT = "#f2f3f5";
   const DARK = "";
   const LIGHT_HEX = 0xf2f3f5;
-  const VERSION = "v4";
+  const VERSION = "v5";
   let retryTimer = null;
   let retryTries = 0;
 
@@ -223,6 +223,19 @@
         (e) => {
           try {
             e.stopPropagation();
+            e.preventDefault();
+          } catch {}
+          applyMode(mode);
+          setActive(btnLight, btnDark, mode);
+        },
+        { capture: true }
+      );
+      btn.addEventListener(
+        "click",
+        (e) => {
+          try {
+            e.stopPropagation();
+            e.preventDefault();
           } catch {}
           applyMode(mode);
           setActive(btnLight, btnDark, mode);
