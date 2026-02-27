@@ -14,6 +14,7 @@
   const LIGHT = "#f2f3f5";
   const DARK = "";
   const LIGHT_HEX = 0xf2f3f5;
+  const VERSION = "v4";
   let retryTimer = null;
   let retryTries = 0;
 
@@ -158,7 +159,7 @@
     const wrap = document.createElement("div");
     wrap.id = "revitget-bg-toggle";
     wrap.style.position = "fixed";
-    wrap.style.top = "28px";
+    wrap.style.top = "44px";
     wrap.style.right = "72px";
     wrap.style.zIndex = "2147483647";
     wrap.style.pointerEvents = "auto";
@@ -186,8 +187,8 @@
       return b;
     };
 
-    const btnLight = makeBtn("浅色");
-    const btnDark = makeBtn("深色");
+    const btnLight = makeBtn("浅色 " + VERSION);
+    const btnDark = makeBtn("深色 " + VERSION);
     wrap.appendChild(btnLight);
     wrap.appendChild(btnDark);
     host.appendChild(wrap);
@@ -222,19 +223,12 @@
         (e) => {
           try {
             e.stopPropagation();
-            e.preventDefault();
           } catch {}
+          applyMode(mode);
+          setActive(btnLight, btnDark, mode);
         },
         { capture: true }
       );
-      btn.addEventListener("click", (e) => {
-        try {
-          e.stopPropagation();
-          e.preventDefault();
-        } catch {}
-        applyMode(mode);
-        setActive(btnLight, btnDark, mode);
-      });
     };
     bind(btnLight, "light");
     bind(btnDark, "dark");
