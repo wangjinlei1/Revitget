@@ -10,7 +10,7 @@
   const RE_PATCH_OFF = params && (params.get("nopatch") === "1" || params.get("revitget_patch") === "0");
   if (RE_PATCH_OFF) return;
 
-  const WASM_PATH = "threejs/lib/dwgApi/DwgApi.wasm";
+  const WASM_PATH = "/threejs/lib/dwgApi/DwgApi.wasm";
 
   function log(msg) {
     try {
