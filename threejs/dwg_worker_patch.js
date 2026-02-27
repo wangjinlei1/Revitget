@@ -58,16 +58,6 @@
                 log("DWG Worker error: " + e.data.dxfData);
               } else if (e.data && e.data.status === 0 && e.data.url) {
                 log("DWG Worker success, DXF URL: " + e.data.url);
-                try {
-                  const root = window.webView ?? window;
-                  const app = tryGet(root, ["app"]) || tryGet(root, ["webView", "app"]);
-                  if (app && typeof app.loadModel === "function") {
-                    log("Auto-loading DXF from blob URL: " + e.data.url);
-                    app.loadModel({ url: e.data.url, format: "dxf" });
-                  }
-                } catch (err) {
-                  log("Error auto-loading DXF: " + err);
-                }
               }
             } catch {}
           });

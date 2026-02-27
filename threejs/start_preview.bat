@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0\.."
+cd /d "%~dp0"
 
 set PORT=5173
 
@@ -29,7 +29,7 @@ if %ERRORLEVEL% EQU 0 (
   exit /b 1
 )
 
-start "" /b python threejs/serve.py %PORT%
+start "" /b python serve.py %PORT%
 timeout /t 1 /nobreak >nul
 start "" msedge "http://localhost:%PORT%/index.html"
 echo.

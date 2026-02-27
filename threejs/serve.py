@@ -2,6 +2,8 @@ import http.server
 import mimetypes
 import socketserver
 import sys
+import os
+import functools
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
@@ -40,7 +42,10 @@ class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 host = "127.0.0.1"
-with ReusableTCPServer((host, port), Handler) as httpd:
+base_dir = os.path.dirname(os.path.abspath(__file__))
+HandlerWithDir = functools.partial(Handler, directory=base_dir)
+
+with ReusableTCPServer((host, port), HandlerWithDir) as httpd:
     print(f"Serving on http://{host}:{port}/index.html")
     httpd.serve_forever()
 

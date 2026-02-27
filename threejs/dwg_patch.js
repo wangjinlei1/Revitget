@@ -62,6 +62,15 @@
                     setTimeout(() => {
                       try {
                         app.loadModel({ url: e.data.url, format: "dxf" });
+                        if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
+                          const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
+                          setTimeout(() => {
+                            try {
+                              URL.revokeObjectURL(e.data.url);
+                              log("Revoked DXF blob URL: " + e.data.url);
+                            } catch {}
+                          }, Math.max(0, delay));
+                        }
                       } catch (err) {
                         log("Error auto-loading DXF: " + err);
                       }
