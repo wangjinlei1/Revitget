@@ -147,6 +147,41 @@ function getComputedBg(el) {
   }
 }
 
+function getComputedOverlayStyle(el) {
+  if (!el || typeof window.getComputedStyle !== "function") return null;
+  try {
+    const cs = window.getComputedStyle(el);
+    if (!cs) return null;
+    return {
+      background: cs.background ?? null,
+      backgroundColor: cs.backgroundColor ?? null,
+      backgroundImage: cs.backgroundImage ?? null,
+      filter: cs.filter ?? null,
+      backdropFilter: cs.backdropFilter ?? cs.webkitBackdropFilter ?? null,
+      mixBlendMode: cs.mixBlendMode ?? null,
+      opacity: cs.opacity ?? null
+    };
+  } catch {
+    return null;
+  }
+}
+
+function setOverlayImportant(el, st) {
+  if (!el || !el.style || typeof el.style.setProperty !== "function") return;
+  if (!st) return;
+  try {
+    if (st.background != null) el.style.setProperty("background", st.background, "important");
+    if (st.backgroundColor != null) el.style.setProperty("background-color", st.backgroundColor, "important");
+    if (st.backgroundImage != null) el.style.setProperty("background-image", st.backgroundImage, "important");
+    if (st.filter != null) el.style.setProperty("filter", st.filter, "important");
+    if (st.filter != null) el.style.setProperty("-webkit-filter", st.filter, "important");
+    if (st.backdropFilter != null) el.style.setProperty("backdrop-filter", st.backdropFilter, "important");
+    if (st.backdropFilter != null) el.style.setProperty("-webkit-backdrop-filter", st.backdropFilter, "important");
+    if (st.mixBlendMode != null) el.style.setProperty("mix-blend-mode", st.mixBlendMode, "important");
+    if (st.opacity != null) el.style.setProperty("opacity", st.opacity, "important");
+  } catch {}
+}
+
 function setBgImportant(el, color) {
   if (!el || !el.style || typeof el.style.setProperty !== "function") return;
   if (color == null) return;
@@ -460,7 +495,7 @@ function snapshotRendererAndPage(renderer, scene) {
   try {
     if (baselineOverlayChain == null) {
       const chain = buildOverlayChain(renderer);
-      baselineOverlayChain = chain.map((el) => ({ el, bg: getComputedBg(el) }));
+      baselineOverlayChain = chain.map((el) => ({ el, bg: getComputedBg(el), st: getComputedOverlayStyle(el) }));
     }
   } catch {
     baselineOverlayChain = baselineOverlayChain ?? null;
@@ -627,7 +662,11 @@ function restoreRendererAndPage(app) {
       for (const item of baselineOverlayChain) {
         const el = item && item.el ? item.el : null;
         const bg = item ? item.bg : null;
-        if (el && bg != null) setBgImportant(el, bg);
+        const st = item ? item.st : null;
+        if (el) {
+          if (st) setOverlayImportant(el, st);
+          else if (bg != null) setBgImportant(el, bg);
+        }
       }
     }
   } catch {}
