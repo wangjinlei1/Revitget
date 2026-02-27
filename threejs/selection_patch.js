@@ -709,22 +709,182 @@ function scheduleRestore(app) {
   requestAnimationFrame(tick);
 }
 
+let threeModPromise = null;
+let threeMod = null;
+let pickBound = false;
+let downX = 0;
+let downY = 0;
+let downT = 0;
+let moved = false;
+let highlightedObj = null;
+const originalMaterialByObject = new WeakMap();
+const HIGHLIGHT_HEX = 0xffa500;
+
+function loadThree() {
+  if (threeMod) return Promise.resolve(threeMod);
+  if (threeModPromise) return threeModPromise;
+  threeModPromise = import("./assets/three@0.172.0-D3jjpEWA.js")
+    .then((m) => {
+      threeMod = m;
+      return m;
+    })
+    .catch(() => null);
+  return threeModPromise;
+}
+
+function isPickable(o) {
+  if (!o || typeof o !== "object") return false;
+  if (o.isMesh) return true;
+  if (o.isLineSegments || o.isLine) return true;
+  if (o.isPoints) return true;
+  return false;
+}
+
+function restoreHighlight() {
+  if (!highlightedObj) return;
+  const orig = originalMaterialByObject.get(highlightedObj);
+  if (orig) {
+    try {
+      highlightedObj.material = orig;
+    } catch {}
+  }
+  highlightedObj = null;
+}
+
+function applyHighlight(obj) {
+  if (!obj) return;
+  if (highlightedObj === obj) return;
+  restoreHighlight();
+  try {
+    if (!originalMaterialByObject.has(obj)) {
+      originalMaterialByObject.set(obj, obj.material);
+    }
+  } catch {}
+  const mat = obj.material;
+  const make = (m) => {
+    if (!m || typeof m !== "object" || !m.isMaterial) return m;
+    let c = null;
+    try {
+      c = m.clone();
+    } catch {
+      c = m;
+    }
+    try {
+      if (c.emissive && typeof c.emissive.setHex === "function") {
+        c.emissive.setHex(HIGHLIGHT_HEX);
+        if (typeof c.emissiveIntensity === "number") c.emissiveIntensity = Math.max(1, c.emissiveIntensity);
+      } else if (c.color && typeof c.color.setHex === "function") {
+        c.color.setHex(HIGHLIGHT_HEX);
+      }
+    } catch {}
+    try {
+      c.needsUpdate = true;
+    } catch {}
+    return c;
+  };
+  try {
+    if (Array.isArray(mat)) obj.material = mat.map(make);
+    else obj.material = make(mat);
+  } catch {}
+  highlightedObj = obj;
+}
+
+async function pickAndHighlight(app, clientX, clientY) {
+  const view = getView(app);
+  const scene = getScene(view);
+  const camera = view && (view.camera || view._camera || null);
+  const renderer = getRenderer(view);
+  if (!scene || !camera || !renderer) return;
+  const three = await loadThree();
+  if (!three || !three.Raycaster || !three.Vector2) return;
+  const canvas = renderer.domElement;
+  if (!canvas || typeof canvas.getBoundingClientRect !== "function") return;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
+  const raycaster = new three.Raycaster();
+  raycaster.setFromCamera(new three.Vector2(x, y), camera);
+  let intersects = [];
+  try {
+    intersects = raycaster.intersectObjects(scene.children || [], true) || [];
+  } catch {
+    intersects = [];
+  }
+  let hit = null;
+  for (const it of intersects) {
+    const o = it && it.object ? it.object : null;
+    if (isPickable(o)) {
+      hit = o;
+      break;
+    }
+  }
+  if (hit) applyHighlight(hit);
+  else restoreHighlight();
+}
+
 function bindSelectionGuard(app) {
   if (!app || app.__revitget_sel_guard_bound) return;
   app.__revitget_sel_guard_bound = true;
-  const attach = () => {
-    const view = getView(app);
-    const renderer = getRenderer(view);
-    const el = renderer && renderer.domElement ? renderer.domElement : null;
-    const target = el || window;
-    const handler = () => scheduleRestore(app);
+  const view = getView(app);
+  const renderer = getRenderer(view);
+  const el = renderer && renderer.domElement ? renderer.domElement : null;
+  const target = el || window;
+
+  if (!pickBound) {
+    pickBound = true;
     try {
-      target.addEventListener("pointerdown", handler, { passive: true, capture: true });
-      target.addEventListener("pointerup", handler, { passive: true, capture: true });
-      target.addEventListener("click", handler, { passive: true, capture: true });
+      target.addEventListener(
+        "pointerdown",
+        (e) => {
+          try {
+            downX = e.clientX || 0;
+            downY = e.clientY || 0;
+            downT = Date.now();
+            moved = false;
+          } catch {}
+        },
+        { capture: true }
+      );
+      target.addEventListener(
+        "pointermove",
+        (e) => {
+          try {
+            const dx = (e.clientX || 0) - downX;
+            const dy = (e.clientY || 0) - downY;
+            if (dx * dx + dy * dy > 25) moved = true;
+          } catch {}
+        },
+        { capture: true, passive: true }
+      );
+      target.addEventListener(
+        "pointerup",
+        async (e) => {
+          try {
+            const dt = Date.now() - downT;
+            if (moved || dt > 350) return;
+            if (e.button != null && e.button !== 0) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+            await pickAndHighlight(app, e.clientX, e.clientY);
+          } catch {}
+        },
+        { capture: true }
+      );
+      target.addEventListener(
+        "click",
+        (e) => {
+          try {
+            e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+          } catch {}
+        },
+        { capture: true }
+      );
     } catch {}
-  };
-  attach();
+  }
 }
 
 function tryPatch() {
