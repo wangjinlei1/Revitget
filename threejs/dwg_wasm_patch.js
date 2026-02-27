@@ -45,8 +45,13 @@
         if (cfg && typeof cfg === "object") {
           const url = cfg.url || cfg.fileUrl || cfg.path || "";
           const format = cfg.format || "";
-          log("loadModel called with url=" + url + " format=" + format);
-          if (url && (/\.(dwg|dxf)$/i.test(url) || format === "dwg" || format === "dxf")) {
+          const fileName = cfg.fileName || cfg.name || (cfg.file && cfg.file.name) || (cfg.blob && cfg.blob.name) || "";
+          log("loadModel called with url=" + url + " format=" + format + " fileName=" + fileName);
+          const isDwgDxf = 
+            (url && /\.(dwg|dxf)$/i.test(url)) ||
+            (fileName && /\.(dwg|dxf)$/i.test(fileName)) ||
+            format === "dwg" || format === "dxf";
+          if (isDwgDxf) {
             log("Detected DWG/DXF file, injecting locateFile");
             const patched = Object.assign({}, cfg);
             patched.locateFile = function (file) {
