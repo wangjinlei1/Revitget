@@ -10,6 +10,10 @@ let baselineCanvasStyle = null;
 let baselineCanvasComputed = null;
 let baselineDomBg = null;
 let baselineRootBg = null;
+let baselineDomComputedBg = null;
+let baselineRootComputedBg = null;
+let baselineAppComputedBg = null;
+let baselineOverlayChain = null;
 let restoreScheduled = false;
 let baselineCaptured = false;
 let restoreFramesLeft = 0;
@@ -127,6 +131,51 @@ function setHexSafe(colorObj, hex) {
   try {
     if (colorObj && typeof colorObj.setHex === "function") colorObj.setHex(hex);
   } catch {}
+}
+
+function getComputedBg(el) {
+  if (!el || typeof window.getComputedStyle !== "function") return null;
+  try {
+    const cs = window.getComputedStyle(el);
+    return cs ? cs.backgroundColor ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+function setBgImportant(el, color) {
+  if (!el || !el.style || typeof el.style.setProperty !== "function") return;
+  if (color == null) return;
+  try {
+    el.style.setProperty("background-color", color, "important");
+  } catch {}
+}
+
+function buildOverlayChain(renderer) {
+  const chain = [];
+  try {
+    const canvas = renderer && renderer.domElement ? renderer.domElement : null;
+    if (canvas) {
+      let cur = canvas;
+      let depth = 0;
+      while (cur && depth < 8) {
+        chain.push(cur);
+        cur = cur.parentElement || null;
+        depth += 1;
+      }
+    }
+  } catch {}
+  try {
+    const appEl = document && document.getElementById ? document.getElementById("app") : null;
+    if (appEl && !chain.includes(appEl)) chain.push(appEl);
+  } catch {}
+  try {
+    if (document && document.body && !chain.includes(document.body)) chain.push(document.body);
+  } catch {}
+  try {
+    if (document && document.documentElement && !chain.includes(document.documentElement)) chain.push(document.documentElement);
+  } catch {}
+  return chain;
 }
 
 function snapshotMaterial(m) {
@@ -275,6 +324,32 @@ function snapshotRendererAndPage(renderer, scene) {
   } catch {
     baselineRootBg = null;
   }
+  try {
+    if (baselineDomComputedBg == null) baselineDomComputedBg = getComputedBg(document && document.body ? document.body : null);
+  } catch {
+    baselineDomComputedBg = baselineDomComputedBg ?? null;
+  }
+  try {
+    if (baselineRootComputedBg == null) baselineRootComputedBg = getComputedBg(document && document.documentElement ? document.documentElement : null);
+  } catch {
+    baselineRootComputedBg = baselineRootComputedBg ?? null;
+  }
+  try {
+    if (baselineAppComputedBg == null) {
+      const appEl = document && document.getElementById ? document.getElementById("app") : null;
+      baselineAppComputedBg = getComputedBg(appEl);
+    }
+  } catch {
+    baselineAppComputedBg = baselineAppComputedBg ?? null;
+  }
+  try {
+    if (baselineOverlayChain == null) {
+      const chain = buildOverlayChain(renderer);
+      baselineOverlayChain = chain.map((el) => ({ el, bg: getComputedBg(el) }));
+    }
+  } catch {
+    baselineOverlayChain = baselineOverlayChain ?? null;
+  }
 }
 
 function captureBaseline(app) {
@@ -288,6 +363,10 @@ function captureBaseline(app) {
     baselineRendererState = null;
     baselineCanvasStyle = null;
     baselineCanvasComputed = null;
+    baselineDomComputedBg = null;
+    baselineRootComputedBg = null;
+    baselineAppComputedBg = null;
+    baselineOverlayChain = null;
   }
   ensureUniqueMaterials(scene);
   hookWebglClearOnce();
@@ -415,6 +494,27 @@ function restoreRendererAndPage(app) {
   } catch {}
   try {
     if (document && document.documentElement && document.documentElement.style && baselineRootBg != null) document.documentElement.style.backgroundColor = baselineRootBg;
+  } catch {}
+  try {
+    if (baselineDomComputedBg != null && document && document.body) setBgImportant(document.body, baselineDomComputedBg);
+  } catch {}
+  try {
+    if (baselineRootComputedBg != null && document && document.documentElement) setBgImportant(document.documentElement, baselineRootComputedBg);
+  } catch {}
+  try {
+    if (baselineAppComputedBg != null && document && document.getElementById) {
+      const appEl = document.getElementById("app");
+      if (appEl) setBgImportant(appEl, baselineAppComputedBg);
+    }
+  } catch {}
+  try {
+    if (baselineOverlayChain && baselineOverlayChain.length) {
+      for (const item of baselineOverlayChain) {
+        const el = item && item.el ? item.el : null;
+        const bg = item ? item.bg : null;
+        if (el && bg != null) setBgImportant(el, bg);
+      }
+    }
   } catch {}
 }
 
