@@ -107,8 +107,7 @@
   function setActiveExt(ext) {
     const e = String(ext || "").toLowerCase();
     if (e) window.__revitget_last_model_ext = e;
-    window.__revitget_force_glb_light_bg = window.__revitget_last_model_ext === "glb";
-    applyPageBg(window.__revitget_force_glb_light_bg);
+    window.__revitget_force_glb_light_bg = false;
   }
 
   function tryGet(obj, path) {
@@ -962,88 +961,7 @@
         setActiveExt(ext);
       }
     }
-    const isGlb = ext === "glb";
-    setActiveExt(isGlb ? "glb" : ext);
-
-    if (renderer.__revitget_orig_clear === undefined) {
-      try {
-        if (typeof renderer.getClearColor === "function" && typeof renderer.getClearAlpha === "function") {
-          renderer.__revitget_orig_clear = null;
-        } else {
-          renderer.__revitget_orig_clear = null;
-        }
-      } catch {
-        renderer.__revitget_orig_clear = null;
-      }
-    }
-    if (renderer.__revitget_orig_exposure === undefined) {
-      renderer.__revitget_orig_exposure = typeof renderer.toneMappingExposure === "number" ? renderer.toneMappingExposure : null;
-    }
-    if (scene && scene.__revitget_orig_bg === undefined) scene.__revitget_orig_bg = scene.background;
-
-    if (typeof renderer.setClearColor === "function") {
-      if (isGlb) {
-        applyGlbEnvTuning(app);
-        renderer.__revitget_force_clear = LIGHT_BG_COLOR;
-        renderer.setClearColor(LIGHT_BG_COLOR, 1);
-        try {
-          const canvas = renderer.domElement;
-          if (canvas && canvas.style) {
-            canvas.style.backgroundColor = "#f2f3f5";
-          }
-        } catch {}
-        try {
-          const host = renderer.domElement && renderer.domElement.parentElement;
-          if (host && host.style) host.style.backgroundColor = "#f2f3f5";
-        } catch {}
-        applyPageBg(true);
-        applyMaterialTuning(view, scene);
-        try {
-          window.__revitget_dbg = { app, view, renderer, scene, materials: collectMaterials(view, scene, 120) };
-        } catch {}
-        if (scene) {
-          try {
-            if (scene.background && scene.background.isColor && typeof scene.background.setHex === "function") {
-              scene.background.setHex(LIGHT_BG_COLOR);
-            }
-          } catch {}
-        }
-        if (renderer.__revitget_orig_exposure !== null && typeof renderer.toneMappingExposure === "number") {
-          renderer.toneMappingExposure = renderer.__revitget_orig_exposure;
-        }
-        renderer.__revitget_glb_applied = true;
-      } else if (renderer.__revitget_glb_applied) {
-        restoreEnvTuning(app);
-        renderer.__revitget_force_clear = null;
-        const orig = renderer.__revitget_orig_clear;
-        renderer.setClearColor(orig == null ? DARK_BG_COLOR : orig, 1);
-        try {
-          const canvas = renderer.domElement;
-          if (canvas && canvas.style) {
-            canvas.style.backgroundColor = "";
-          }
-        } catch {}
-        try {
-          const host = renderer.domElement && renderer.domElement.parentElement;
-          if (host && host.style) host.style.backgroundColor = "";
-        } catch {}
-        applyPageBg(false);
-        restoreMaterialTuning(view, scene);
-        try {
-          if (window.__revitget_dbg) window.__revitget_dbg.materials = collectMaterials(view, scene, 120);
-        } catch {}
-        if (scene && scene.__revitget_orig_bg !== undefined) {
-          try {
-            scene.background = scene.__revitget_orig_bg;
-          } catch {}
-        }
-        if (renderer.__revitget_orig_exposure !== null && typeof renderer.toneMappingExposure === "number") {
-          renderer.toneMappingExposure = renderer.__revitget_orig_exposure;
-        }
-        renderer.__revitget_glb_applied = false;
-      }
-    }
-
+    setActiveExt(ext);
     return true;
   }
 
