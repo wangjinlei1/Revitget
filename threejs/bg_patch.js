@@ -105,6 +105,9 @@
       if (sky && sky.style) sky.style.display = isLight ? "block" : "none";
     } catch {}
     try {
+      window.__revitget_force_glb_light_bg = !!isLight;
+    } catch {}
+    try {
       setBg(document.documentElement, c);
     } catch {}
     try {
