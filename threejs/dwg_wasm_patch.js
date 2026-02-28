@@ -172,10 +172,7 @@
           if (isDwg) {
             log("Detected DWG file, injecting locateFile");
             if (url && url.startsWith("blob:") && (!format || format === "dwg")) {
-              return convertBlobDwgToDxf(original, url, fileName, rest).catch((e) => {
-                logError(e, "Manual DWG->DXF failed");
-                throw e;
-              });
+              return original(cfg, ...rest);
             }
             const patched = Object.assign({}, cfg);
             patched.locateFile = function (file) {

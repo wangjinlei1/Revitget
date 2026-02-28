@@ -244,55 +244,93 @@
     })();
 
     return new Promise((resolve, reject) => {
-      try {
-        log("Manual DWG->DXF: " + workerUrl);
-        worker = new Worker(workerUrl);
-      } catch (e) {
-        cleanup();
-        reject(e);
-        return;
-      }
+      fetch(srcUrl)
+        .then((r) => r.arrayBuffer())
+        .then((buf) => {
+          let headAscii = "";
+          try {
+            const u8 = new Uint8Array(buf, 0, Math.min(64, buf.byteLength));
+            headAscii = String.fromCharCode.apply(null, Array.from(u8)).replace(/\0/g, "");
+          } catch {}
 
-      worker.addEventListener("message", (e) => {
-        try {
-          const data = e && e.data;
-          if (data && data.status === 0) {
-            Promise.resolve(loadDxf(app, data))
-              .then((doc) => {
-                cleanup();
-                resolve(doc);
-              })
-              .catch((err) => {
-                cleanup();
-                reject(err);
-              });
-            return;
+          const looksLikeDwg = /^AC10/i.test(headAscii);
+          const looksLikeDxf = /^\s*(0|999)\b/.test(headAscii);
+
+          if (!looksLikeDwg && looksLikeDxf) {
+            try {
+              const decoder = new TextDecoder("utf-8");
+              const dxfText = decoder.decode(buf);
+              Promise.resolve(loadDxf(app, { dxfText, fileName: srcName || "revitget.dxf" }))
+                .then((doc) => {
+                  cleanup();
+                  resolve(doc);
+                })
+                .catch((err) => {
+                  cleanup();
+                  reject(err);
+                });
+              return;
+            } catch (e) {
+              cleanup();
+              reject(e);
+              return;
+            }
           }
-          if (data && data.status === 1) {
+
+          try {
+            log("Manual DWG->DXF: " + workerUrl);
+            worker = new Worker(workerUrl);
+          } catch (e) {
             cleanup();
-            reject(new Error(String(data.dxfData || "DWG转换失败")));
+            reject(e);
             return;
           }
-        } catch (err) {
+
+          worker.addEventListener("message", (e) => {
+            try {
+              const data = e && e.data;
+              if (data && data.status === 0) {
+                Promise.resolve(loadDxf(app, data))
+                  .then((doc) => {
+                    cleanup();
+                    resolve(doc);
+                  })
+                  .catch((err) => {
+                    cleanup();
+                    reject(err);
+                  });
+                return;
+              }
+              if (data && data.status === 1) {
+                cleanup();
+                reject(new Error(String(data.dxfData || "DWG转换失败")));
+                return;
+              }
+            } catch (err) {
+              cleanup();
+              reject(err);
+            }
+          });
+
+          worker.addEventListener("error", (e) => {
+            cleanup();
+            reject(e && e.message ? new Error(e.message) : e);
+          });
+
+          try {
+            if (baseUrl) worker.postMessage({ __revitget_init: 1, baseUrl });
+          } catch {}
+          try {
+            worker.postMessage({ buffer: buf, fileName: srcName || "" }, [buf]);
+          } catch (e) {
+            cleanup();
+            reject(e);
+          }
+        })
+        .catch((e) => {
           cleanup();
-          reject(err);
-        }
-      });
-
-      worker.addEventListener("error", (e) => {
-        cleanup();
-        reject(e && e.message ? new Error(e.message) : e);
-      });
-
-      try {
-        if (baseUrl) worker.postMessage({ __revitget_init: 1, baseUrl });
-      } catch {}
-      try {
-        worker.postMessage({ url: srcUrl, fileName: srcName || "" });
-      } catch (e) {
-        cleanup();
-        reject(e);
-      }
+          reject(e);
+        });
     });
   }
 
