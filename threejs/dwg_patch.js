@@ -18,6 +18,42 @@
     } catch {}
   }
 
+  function getWaiters() {
+    try {
+      if (!window.__revitget_dwg_waiters) window.__revitget_dwg_waiters = new Map();
+      return window.__revitget_dwg_waiters;
+    } catch {
+      return null;
+    }
+  }
+
+  function createWaiter(srcUrl) {
+    const map = getWaiters();
+    if (!map || !srcUrl) return null;
+    if (map.has(srcUrl)) return map.get(srcUrl);
+    let resolve = null;
+    let reject = null;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    const entry = { promise, resolve, reject, ts: Date.now() };
+    map.set(srcUrl, entry);
+    return entry;
+  }
+
+  function settleWaiter(srcUrl, err, doc) {
+    try {
+      const map = getWaiters();
+      if (!map || !srcUrl) return;
+      const entry = map.get(srcUrl);
+      if (!entry) return;
+      map.delete(srcUrl);
+      if (err) entry.reject(err);
+      else entry.resolve(doc);
+    } catch {}
+  }
+
   function errToString(e) {
     try {
       if (e && typeof e === "object") {
@@ -190,6 +226,25 @@
               (cfg && cfg.blob && cfg.blob.name) ||
               ""
           );
+          const isDwg =
+            (url && /\.dwg(\?|#|$)/i.test(url)) ||
+            (fileName && /\.dwg$/i.test(fileName)) ||
+            format === "dwg";
+          if (isDwg && url && url.startsWith("blob:")) {
+            const waiter = createWaiter(url);
+            Promise.resolve(original(cfg, ...rest)).catch(() => {});
+            if (waiter) return waiter.promise;
+          }
+        } catch {}
+        try {
+          const url = cfg && cfg.url ? String(cfg.url) : "";
+          const format = cfg && cfg.format != null ? String(cfg.format) : "";
+          const fileName = String(
+            (cfg && (cfg.fileName || cfg.name)) ||
+              (cfg && cfg.file && cfg.file.name) ||
+              (cfg && cfg.blob && cfg.blob.name) ||
+              ""
+          );
           const isDxf =
             (url && /\.dxf(\?|#|$)/i.test(url)) ||
             (fileName && /\.dxf$/i.test(fileName)) ||
@@ -228,6 +283,20 @@
             log("Creating DWG Worker for: " + String(workerUrl));
             const worker = new originalWorker(workerUrl, options);
             try {
+              const origPost = worker.postMessage ? worker.postMessage.bind(worker) : null;
+              if (origPost) {
+                worker.postMessage = function (msg, transfer) {
+                  try {
+                    if (msg && typeof msg === "object") {
+                      if (msg.url && typeof msg.url === "string" && msg.url.startsWith("blob:")) worker.__revitget_srcUrl = String(msg.url);
+                      if (msg.fileName) worker.__revitget_srcName = String(msg.fileName);
+                    }
+                  } catch {}
+                  return origPost(msg, transfer);
+                };
+              }
+            } catch {}
+            try {
               const baseUrl = new URL("./lib/dwgApi/", location.href).href;
               worker.postMessage({ __revitget_init: 1, baseUrl });
             } catch {}
@@ -235,6 +304,13 @@
               try {
                 if (e.data && e.data.status === 0 && e.data.url) {
                   log("DWG Worker success, DXF URL: " + e.data.url);
+                  const srcUrl = (() => {
+                    try {
+                      return worker && worker.__revitget_srcUrl ? String(worker.__revitget_srcUrl) : "";
+                    } catch {
+                      return "";
+                    }
+                  })();
                   const root = window.webView ?? window;
                   const app = tryGet(root, ["app"]) || tryGet(root, ["webView", "app"]);
                   if (app && typeof app.loadModel === "function") {
@@ -257,7 +333,10 @@
                     setTimeout(() => {
                       try {
                         loadDxf(app, e.data)
-                          .then(() => {
+                          .then((doc) => {
+                            try {
+                              if (srcUrl) settleWaiter(srcUrl, null, doc);
+                            } catch {}
                             if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
                               const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
                               setTimeout(() => {
@@ -270,14 +349,24 @@
                           })
                           .catch((err) => {
                             logError(err, "DXF load failed");
+                            try {
+                              if (srcUrl) settleWaiter(srcUrl, err, null);
+                            } catch {}
                           });
                       } catch (err) {
                         logError(err, "Error auto-loading DXF");
+                        try {
+                          if (srcUrl) settleWaiter(srcUrl, err, null);
+                        } catch {}
                       }
                     }, 100);
                   }
                 } else if (e.data && e.data.status === 1) {
                   log("DWG Worker error: " + e.data.dxfData);
+                  try {
+                    const srcUrl = worker && worker.__revitget_srcUrl ? String(worker.__revitget_srcUrl) : "";
+                    if (srcUrl) settleWaiter(srcUrl, new Error(String(e.data.dxfData || "DWG转换失败")), null);
+                  } catch {}
                 }
               } catch {}
             });
