@@ -11,10 +11,31 @@
   if (RE_PATCH_OFF) return;
 
   const WASM_PATH = new URL("./lib/dwgApi/DwgApi.wasm", import.meta.url).href;
+  const DWG2DXF_WORKER_URL = new URL("./lib/dwgApi/dwg2dxf.js", import.meta.url).href;
 
   function log(msg) {
     try {
       console.log("[DWG_WASM_PATCH]", msg);
+    } catch {}
+  }
+
+  function errToString(e) {
+    try {
+      if (e && typeof e === "object") {
+        if (e.stack) return String(e.stack);
+        if (e.message) return String(e.message);
+      }
+      return String(e);
+    } catch {
+      return "";
+    }
+  }
+
+  function logError(e, prefix) {
+    try {
+      const s = errToString(e);
+      if (s) console.error("[DWG_WASM_PATCH]" + (prefix ? " " + prefix : ""), s);
+      else console.error("[DWG_WASM_PATCH]" + (prefix ? " " + prefix : ""), e);
     } catch {}
   }
 
@@ -29,6 +50,89 @@
       }
     }
     return cur ?? null;
+  }
+
+  function convertBlobDwgToDxf(originalLoadModel, url, fileName, rest) {
+    const baseUrl = new URL("./lib/dwgApi/", location.href).href;
+    const workerUrl = (DWG2DXF_WORKER_URL.includes("?") ? DWG2DXF_WORKER_URL + "&" : DWG2DXF_WORKER_URL + "?") + "revitget_v=manual_v1";
+    try {
+      window.__revitget_dwg_manual_loading = true;
+    } catch {}
+    log("Manual DWG->DXF via Worker: " + workerUrl);
+    return fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        return new Promise((resolve, reject) => {
+          let worker = null;
+          const cleanup = () => {
+            try {
+              if (worker) worker.terminate();
+            } catch {}
+            worker = null;
+            try {
+              window.__revitget_dwg_manual_loading = false;
+            } catch {}
+          };
+
+          try {
+            worker = new Worker(workerUrl);
+          } catch (e) {
+            cleanup();
+            reject(e);
+            return;
+          }
+
+          worker.addEventListener("message", (e) => {
+            try {
+              const data = e && e.data;
+              if (data && data.status === 0) {
+                const dxfText = typeof data.dxfText === "string" ? data.dxfText : null;
+                const pseudoUrl = "revitget_" + Date.now() + ".dxf";
+                const cfg2 = { url: pseudoUrl, fileName: "revitget.dxf", dxfText, fontsUrls: [] };
+                Promise.resolve(originalLoadModel(cfg2, ...rest))
+                  .then((doc) => {
+                    cleanup();
+                    resolve(doc);
+                  })
+                  .catch((err) => {
+                    cleanup();
+                    reject(err);
+                  });
+                return;
+              }
+              if (data && data.status === 1) {
+                cleanup();
+                reject(new Error(data.dxfData || "DWG转换失败"));
+                return;
+              }
+            } catch (err) {
+              cleanup();
+              reject(err);
+            }
+          });
+
+          worker.addEventListener("error", (e) => {
+            cleanup();
+            reject(e && e.message ? new Error(e.message) : e);
+          });
+
+          try {
+            worker.postMessage({ __revitget_init: 1, baseUrl });
+          } catch {}
+          try {
+            worker.postMessage({ buffer: buf, baseUrl, fileName }, [buf]);
+          } catch (e) {
+            cleanup();
+            reject(e);
+          }
+        });
+      })
+      .catch((e) => {
+        try {
+          window.__revitget_dwg_manual_loading = false;
+        } catch {}
+        throw e;
+      });
   }
 
   function patch() {
@@ -67,6 +171,12 @@
 
           if (isDwg) {
             log("Detected DWG file, injecting locateFile");
+            if (url && url.startsWith("blob:") && (!format || format === "dwg")) {
+              return convertBlobDwgToDxf(original, url, fileName, rest).catch((e) => {
+                logError(e, "Manual DWG->DXF failed");
+                throw e;
+              });
+            }
             const patched = Object.assign({}, cfg);
             patched.locateFile = function (file) {
               if (/DwgApi\.wasm$/i.test(file)) {

@@ -238,6 +238,21 @@
                   const root = window.webView ?? window;
                   const app = tryGet(root, ["app"]) || tryGet(root, ["webView", "app"]);
                   if (app && typeof app.loadModel === "function") {
+                    try {
+                      if (window.__revitget_dwg_manual_loading) {
+                        log("Skip auto-loading DXF (manual loading active)");
+                        if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
+                          const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
+                          setTimeout(() => {
+                            try {
+                              URL.revokeObjectURL(e.data.url);
+                              log("Revoked DXF blob URL: " + e.data.url);
+                            } catch {}
+                          }, Math.max(0, delay));
+                        }
+                        return;
+                      }
+                    } catch {}
                     log("Auto-loading DXF from blob URL: " + e.data.url);
                     setTimeout(() => {
                       try {
