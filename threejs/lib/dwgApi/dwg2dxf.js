@@ -159,9 +159,18 @@ function convertBufferToDxf(buffer, meta) {
     try {
         DwgApi.createDataFile(tmp, buffer)
         const dxfData = DwgApi.dwg2dxf(tmp)
+        let dxfText = dxfData
+        try {
+            dxfText = String(dxfData || "")
+        } catch {
+            dxfText = ""
+        }
+        try {
+            dxfText = dxfText.replace(/\0/g, "")
+        } catch {}
         const blob = new Blob([dxfData], { type: "text/plain" })
         const dxfUrl = URL.createObjectURL(blob)
-        self.postMessage({ status: 0, url: dxfUrl, revokeAfterMs: 60000 })
+        self.postMessage({ status: 0, url: dxfUrl, dxfText, revokeAfterMs: 60000 })
     } catch (e) {
         postError(e)
     } finally {

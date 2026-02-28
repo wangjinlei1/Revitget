@@ -44,16 +44,48 @@
             }
           }
         } catch {}
-        return originalGetLoader(cfg);
+        const loader = originalGetLoader(cfg);
+        try {
+          if (loader && !loader.__revitget_loader_patched && typeof loader.load === "function" && typeof loader.loadDxf === "function") {
+            loader.__revitget_loader_patched = true;
+            const origLoad = loader.load.bind(loader);
+            loader.load = function (oe, progress) {
+              try {
+                if (oe && typeof oe.dxfText === "string" && oe.dxfText) {
+                  let txt = oe.dxfText;
+                  try {
+                    txt = String(txt || "").replace(/\0/g, "");
+                  } catch {}
+                  return Promise.resolve(this.loadDxf(txt, oe)).then((doc) => {
+                    try {
+                      doc.config = oe;
+                    } catch {}
+                    return doc;
+                  });
+                }
+              } catch {}
+              return origLoad(oe, progress);
+            };
+          }
+        } catch {}
+        return loader;
       };
       app.__revitget_getloader_patched = true;
       log("Patched app._getLoader for blob files");
     } catch {}
   }
 
-  function loadDxf(app, url) {
+  function loadDxf(app, payload) {
     ensureGetLoaderPatched(app);
     log("Trying DXF load via patched _getLoader");
+    const url = payload && typeof payload === "object" ? payload.url : payload;
+    const dxfText = payload && typeof payload === "object" ? payload.dxfText : null;
+
+    if (typeof dxfText === "string" && dxfText) {
+      const pseudoUrl = "revitget_" + Date.now() + ".dxf";
+      return Promise.resolve(app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText }));
+    }
+
     return Promise.resolve(app.loadModel({ url, fileName: "revitget.dxf" }));
   }
 
@@ -104,7 +136,7 @@
                     log("Auto-loading DXF from blob URL: " + e.data.url);
                     setTimeout(() => {
                       try {
-                        loadDxf(app, e.data.url)
+                        loadDxf(app, e.data)
                           .then(() => {
                             if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
                               const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
