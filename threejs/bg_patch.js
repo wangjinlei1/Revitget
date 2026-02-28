@@ -15,6 +15,7 @@
   const DARK = "";
   const LIGHT_HEX = 0xf2f3f5;
   const VERSION = "v7";
+  const SKY_ID = "revitget-bg-sky";
   let retryTimer = null;
   let retryTries = 0;
 
@@ -69,6 +70,30 @@
     } catch {}
   }
 
+  function ensureSkyOverlay() {
+    try {
+      let el = document.getElementById(SKY_ID);
+      if (el) return el;
+      const host = document.body || document.documentElement;
+      if (!host) return null;
+      el = document.createElement("div");
+      el.id = SKY_ID;
+      el.style.position = "fixed";
+      el.style.left = "0";
+      el.style.top = "0";
+      el.style.right = "0";
+      el.style.height = "60vh";
+      el.style.pointerEvents = "none";
+      el.style.zIndex = "2147482000";
+      el.style.background = "linear-gradient(180deg, rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.18) 22%, rgba(255,255,255,0) 55%)";
+      el.style.display = "none";
+      host.appendChild(el);
+      return el;
+    } catch {
+      return null;
+    }
+  }
+
   function applyMode(mode) {
     const isLight = mode === "light";
     const c = isLight ? LIGHT : DARK;
@@ -76,9 +101,8 @@
     const view = resolveView(app);
     const renderer = resolveRenderer(app, view);
     try {
-      if (typeof window.__revitget_force_glb_light_bg === "boolean") {
-        window.__revitget_force_glb_light_bg = !!isLight;
-      }
+      const sky = ensureSkyOverlay();
+      if (sky && sky.style) sky.style.display = isLight ? "block" : "none";
     } catch {}
     try {
       setBg(document.documentElement, c);

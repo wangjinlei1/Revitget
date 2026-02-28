@@ -16,7 +16,17 @@ function isControlsCandidate(c) {
   if (!isActionEnum(a)) return false;
   const mb = c.mouseButtons;
   if (!mb || typeof mb !== "object") return false;
-  return "left" in mb;
+  return "left" in mb || "LEFT" in mb;
+}
+
+function getLeftKey(c) {
+  try {
+    const mb = c && c.mouseButtons;
+    if (!mb || typeof mb !== "object") return "left";
+    if ("left" in mb) return "left";
+    if ("LEFT" in mb) return "LEFT";
+  } catch {}
+  return "left";
 }
 
 function tryGet(obj, path) {
@@ -112,7 +122,8 @@ function refreshControls() {
 
 function setLeft(action) {
   if (!controls?.mouseButtons) return;
-  controls.mouseButtons.left = action;
+  const k = getLeftKey(controls);
+  controls.mouseButtons[k] = action;
 }
 
 function restoreLeft() {
@@ -120,7 +131,8 @@ function restoreLeft() {
   if (!c) return;
   const original = originalLeftByControls.get(c) ?? originalLeftAction;
   if (original == null) return;
-  controls.mouseButtons.left = original;
+  const k = getLeftKey(c);
+  controls.mouseButtons[k] = original;
 }
 
 function bindOnce() {
@@ -134,11 +146,12 @@ function bindOnce() {
       shiftPressed = true;
       const c = refreshControls();
       if (!c || !ACTION || !c.mouseButtons) return;
+      const k = getLeftKey(c);
       if (!originalLeftByControls.has(c)) {
-        originalLeftByControls.set(c, c.mouseButtons.left);
+        originalLeftByControls.set(c, c.mouseButtons[k]);
       }
       originalLeftAction = originalLeftByControls.get(c);
-      c.mouseButtons.left = ACTION.ROTATE;
+      c.mouseButtons[k] = ACTION.ROTATE;
     },
     { passive: true }
   );
@@ -171,11 +184,12 @@ function bindOnce() {
       shiftPressed = true;
       const c = refreshControls();
       if (!c || !ACTION || !c.mouseButtons) return;
+      const k = getLeftKey(c);
       if (!originalLeftByControls.has(c)) {
-        originalLeftByControls.set(c, c.mouseButtons.left);
+        originalLeftByControls.set(c, c.mouseButtons[k]);
       }
       originalLeftAction = originalLeftByControls.get(c);
-      c.mouseButtons.left = ACTION.ROTATE;
+      c.mouseButtons[k] = ACTION.ROTATE;
     },
     { passive: true, capture: true }
   );
@@ -202,10 +216,12 @@ function bindOnce() {
 function tick() {
   const c = refreshControls();
   if (c && c.mouseButtons && !originalLeftByControls.has(c)) {
-    originalLeftByControls.set(c, c.mouseButtons.left);
+    const k = getLeftKey(c);
+    originalLeftByControls.set(c, c.mouseButtons[k]);
   }
   if (c && shiftPressed && ACTION && c.mouseButtons) {
-    c.mouseButtons.left = ACTION.ROTATE;
+    const k = getLeftKey(c);
+    c.mouseButtons[k] = ACTION.ROTATE;
   }
   requestAnimationFrame(tick);
 }
@@ -217,11 +233,13 @@ const timer = setInterval(() => {
   const c = refreshControls();
   if (c) {
     if (c.mouseButtons && !originalLeftByControls.has(c)) {
-      originalLeftByControls.set(c, c.mouseButtons.left);
+      const k = getLeftKey(c);
+      originalLeftByControls.set(c, c.mouseButtons[k]);
     }
     bindOnce();
     if (shiftPressed && ACTION && c.mouseButtons) {
-      c.mouseButtons.left = ACTION.ROTATE;
+      const k = getLeftKey(c);
+      c.mouseButtons[k] = ACTION.ROTATE;
     }
   }
   if (!controls && tries > 300) clearInterval(timer);
