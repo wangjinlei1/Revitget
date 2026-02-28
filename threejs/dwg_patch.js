@@ -18,6 +18,26 @@
     } catch {}
   }
 
+  function errToString(e) {
+    try {
+      if (e && typeof e === "object") {
+        if (e.stack) return String(e.stack);
+        if (e.message) return String(e.message);
+      }
+      return String(e);
+    } catch {
+      return "";
+    }
+  }
+
+  function logError(e, prefix) {
+    try {
+      const s = errToString(e);
+      if (s) console.error("[DWG_PATCH]" + (prefix ? " " + prefix : ""), s);
+      else console.error("[DWG_PATCH]" + (prefix ? " " + prefix : ""), e);
+    } catch {}
+  }
+
   const REVITGET_VERSION = "dxftext_v2";
 
   function ensureDxfLoaderPrototypePatched(app) {
@@ -55,21 +75,29 @@
             try {
               txt = String(txt || "").replace(/\0/g, "");
             } catch {}
-            return Promise.resolve(this.loadDxf(txt, cfg)).then((doc) => {
-              try {
-                doc.config = cfg;
-              } catch {}
-              return doc;
-            });
+            return Promise.resolve(this.loadDxf(txt, cfg))
+              .then((doc) => {
+                try {
+                  doc.config = cfg;
+                } catch {}
+                return doc;
+              })
+              .catch((e) => {
+                logError(e, "DxfLoaderPlugin.load(dxfText) failed");
+                return Promise.reject(e);
+              });
           }
         } catch (e) {
+          logError(e, "DxfLoaderPlugin.load(dxfText) threw");
           return Promise.reject(e);
         }
         try {
           return Promise.resolve(origLoad.call(this, cfg, progress)).catch((e) => {
+            logError(e, "DxfLoaderPlugin.load(fetch) failed");
             return Promise.reject(e);
           });
         } catch (e) {
+          logError(e, "DxfLoaderPlugin.load(fetch) threw");
           return Promise.reject(e);
         }
       };
@@ -209,10 +237,10 @@
                             }
                           })
                           .catch((err) => {
-                            log("DXF load failed: " + err);
+                            logError(err, "DXF load failed");
                           });
                       } catch (err) {
-                        log("Error auto-loading DXF: " + err);
+                        logError(err, "Error auto-loading DXF");
                       }
                     }, 100);
                   }
