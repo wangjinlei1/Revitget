@@ -152,7 +152,7 @@
     if (typeof dxfText === "string" && dxfText) {
       log("Using dxfText length=" + dxfText.length);
       const pseudoUrl = "revitget_" + Date.now() + ".dxf";
-      return Promise.resolve(app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText }));
+      return Promise.resolve(app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText, fontsUrls: [] }));
     }
 
     try {
@@ -163,7 +163,7 @@
           .then((t) => {
             log("Fetched dxfText length=" + (t ? t.length : 0));
             const pseudoUrl = "revitget_" + Date.now() + ".dxf";
-            return app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText: t });
+            return app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText: t, fontsUrls: [] });
           });
       }
     } catch {}
@@ -181,6 +181,23 @@
     const original = app.loadModel.bind(app);
     app.loadModel = function (cfg, ...rest) {
       try {
+        try {
+          const url = cfg && cfg.url ? String(cfg.url) : "";
+          const format = cfg && cfg.format != null ? String(cfg.format) : "";
+          const fileName = String(
+            (cfg && (cfg.fileName || cfg.name)) ||
+              (cfg && cfg.file && cfg.file.name) ||
+              (cfg && cfg.blob && cfg.blob.name) ||
+              ""
+          );
+          const isDxf =
+            (url && /\.dxf(\?|#|$)/i.test(url)) ||
+            (fileName && /\.dxf$/i.test(fileName)) ||
+            format === "dxf";
+          if (isDxf && cfg && Array.isArray(cfg.fontsUrls) && cfg.fontsUrls.length) {
+            cfg = Object.assign({}, cfg, { fontsUrls: [] });
+          }
+        } catch {}
         if (cfg && Array.isArray(cfg.fontsUrls)) {
           const hasSimfang = cfg.fontsUrls.some((u) => /simfang\.ttf/i.test(String(u)));
           if (hasSimfang) {
