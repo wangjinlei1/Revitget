@@ -54,23 +54,19 @@
           const fileName = cfg.fileName || cfg.name || (cfg.file && cfg.file.name) || (cfg.blob && cfg.blob.name) || "";
           log("loadModel called with url=" + url + " format=" + format + " fileName=" + fileName);
           
-          const isBlobDxf = url && url.startsWith("blob:") && format === "dxf";
-          if (isBlobDxf) {
-            log("Skipping locateFile injection for blob DXF URL");
-            return original(cfg, ...rest);
-          }
+          const isDxf =
+            (url && /\.dxf(\?|#|$)/i.test(url)) ||
+            (fileName && /\.dxf$/i.test(fileName)) ||
+            format === "dxf";
+          if (isDxf) return original(cfg, ...rest);
           
           const isDwg =
             (url && /\.dwg$/i.test(url)) ||
             (fileName && /\.dwg$/i.test(fileName)) ||
             format === "dwg";
 
-          const isDwgDxf = 
-            (url && /\.(dwg|dxf)$/i.test(url)) ||
-            (fileName && /\.(dwg|dxf)$/i.test(fileName)) ||
-            format === "dwg" || format === "dxf";
-          if (isDwgDxf) {
-            log("Detected DWG/DXF file, injecting locateFile");
+          if (isDwg) {
+            log("Detected DWG file, injecting locateFile");
             const patched = Object.assign({}, cfg);
             patched.locateFile = function (file) {
               if (/DwgApi\.wasm$/i.test(file)) {
