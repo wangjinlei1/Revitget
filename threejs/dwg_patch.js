@@ -65,7 +65,18 @@
                     log("Auto-loading DXF from blob URL: " + e.data.url);
                     setTimeout(() => {
                       try {
-                        app.loadModel({ url: e.data.url, format: "dxf" });
+                        let format = "dxf";
+                        try {
+                          if (app._loaderPlugin && typeof app._loaderPlugin.entries === "function") {
+                            for (const [k, v] of app._loaderPlugin.entries()) {
+                              if (v && v.name === "DxfLoaderPlugin") {
+                                format = k;
+                                break;
+                              }
+                            }
+                          }
+                        } catch {}
+                        app.loadModel({ url: e.data.url, format });
                         if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
                           const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
                           setTimeout(() => {
