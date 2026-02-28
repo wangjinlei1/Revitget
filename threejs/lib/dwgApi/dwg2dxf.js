@@ -85,17 +85,17 @@ function dwg2dxf(input) {
     if (url && typeof url === "string") {
         fetch(url)
             .then((response) => response.arrayBuffer())
-            .then((buffer) => convertBufferToDxf(buffer))
+            .then((buffer) => convertBufferToDxf(buffer, { url }))
             .catch((e) => postError(e))
         return
     }
 
     if (input instanceof ArrayBuffer) {
-        convertBufferToDxf(input)
+        convertBufferToDxf(input, { kind: "ArrayBuffer" })
         return
     }
     if (input && typeof input === "object" && input.buffer instanceof ArrayBuffer) {
-        convertBufferToDxf(input.buffer)
+        convertBufferToDxf(input.buffer, { kind: "buffer" })
         return
     }
 
@@ -103,13 +103,13 @@ function dwg2dxf(input) {
         try {
             const file = input.file
             if (file instanceof ArrayBuffer) {
-                convertBufferToDxf(file)
+                convertBufferToDxf(file, { kind: "file:ArrayBuffer" })
                 return
             }
             if (file && typeof FileReaderSync !== "undefined" && (typeof Blob !== "undefined" && file instanceof Blob)) {
                 const reader = new FileReaderSync()
                 const buf = reader.readAsArrayBuffer(file)
-                convertBufferToDxf(buf)
+                convertBufferToDxf(buf, { kind: "file:Blob", name: file.name, size: file.size, type: file.type })
                 return
             }
         } catch (e) {
@@ -122,7 +122,7 @@ function dwg2dxf(input) {
         if (typeof FileReaderSync !== "undefined" && (typeof Blob !== "undefined" && input instanceof Blob)) {
             const reader = new FileReaderSync()
             const buf = reader.readAsArrayBuffer(input)
-            convertBufferToDxf(buf)
+            convertBufferToDxf(buf, { kind: "Blob", size: input.size, type: input.type })
             return
         }
     } catch (e) {
@@ -138,7 +138,23 @@ function makeTempName() {
     return "./revitget_" + Date.now() + "_" + rand + ".dwg"
 }
 
-function convertBufferToDxf(buffer) {
+function convertBufferToDxf(buffer, meta) {
+    try {
+        const u8 = new Uint8Array(buffer)
+        const head = u8.subarray(0, Math.min(16, u8.length))
+        let ascii = ""
+        for (let i = 0; i < head.length; i++) {
+            const c = head[i]
+            ascii += (c >= 32 && c <= 126) ? String.fromCharCode(c) : "."
+        }
+        const isDwg = ascii.startsWith("AC10")
+        if (!isDwg) {
+            const hint = "Not a DWG header. headAscii=" + ascii + " size=" + u8.length + " meta=" + safeJson(meta)
+            postError(new Error(hint))
+            return
+        }
+    } catch {}
+
     const tmp = makeTempName()
     try {
         DwgApi.createDataFile(tmp, buffer)
@@ -152,5 +168,13 @@ function convertBufferToDxf(buffer) {
         try {
             DwgApi.deleteFile(tmp)
         } catch {}
+    }
+}
+
+function safeJson(v) {
+    try {
+        return JSON.stringify(v)
+    } catch {
+        return ""
     }
 }
