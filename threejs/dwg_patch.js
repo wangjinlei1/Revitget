@@ -18,73 +18,43 @@
     } catch {}
   }
 
-  function normalizeDxfUrl(url) {
-    const u = String(url || "");
-    if (!u.startsWith("blob:")) return u;
-    if (/\.dxf(\?|#|$)/i.test(u)) return u;
-    return u + "#revitget.dxf";
-  }
-
-  function loadDxfWithFallback(app, url) {
-    const dxfUrl = normalizeDxfUrl(url);
-
+  function ensureGetLoaderPatched(app) {
     try {
-      log("Trying DXF load by URL extension");
-      return Promise.resolve(app.loadModel({ url: dxfUrl, fileName: "revitget.dxf" })).catch(() => {
-        return loadDxfWithFormatFallback(app, dxfUrl);
-      });
-    } catch (e) {
-      return loadDxfWithFormatFallback(app, dxfUrl);
-    }
-  }
-
-  function loadDxfWithFormatFallback(app, dxfUrl) {
-    const candidates = [];
-    const seen = new Set();
-
-    function add(k) {
-      if (k === undefined || k === null) return;
-      if (seen.has(k)) return;
-      seen.add(k);
-      candidates.push(k);
-    }
-
-    try {
-      if (app && app._loaderPlugin && typeof app._loaderPlugin.entries === "function") {
-        for (const [k, v] of app._loaderPlugin.entries()) {
-          let hit = false;
-          try {
-            const n = String(v && v.name ? v.name : "");
-            if (/dxf/i.test(n)) hit = true;
-          } catch {}
-          if (!hit) {
-            try {
-              const s = String(v && v.toString ? v.toString() : "");
-              if (/dxf/i.test(s)) hit = true;
-            } catch {}
+      if (!app || app.__revitget_getloader_patched) return;
+      if (typeof app._getLoader !== "function") return;
+      const originalGetLoader = app._getLoader.bind(app);
+      app._getLoader = function (cfg) {
+        try {
+          const url = cfg && cfg.url ? String(cfg.url) : "";
+          if (url && url.startsWith("blob:")) {
+            const fileName = String(
+              (cfg && (cfg.fileName || cfg.name)) ||
+                (cfg && cfg.file && cfg.file.name) ||
+                (cfg && cfg.blob && cfg.blob.name) ||
+                ""
+            );
+            const ext = fileName.split(".").pop().toLowerCase();
+            if (ext === "dxf") {
+              const loader = originalGetLoader({ url: "revitget.dxf" });
+              if (loader) return loader;
+            }
+            if (ext === "dwg") {
+              const loader = originalGetLoader({ url: "revitget.dwg" });
+              if (loader) return loader;
+            }
           }
-          if (hit) add(k);
-        }
-        if (typeof app._loaderPlugin.keys === "function") {
-          for (const k of app._loaderPlugin.keys()) add(k);
-        }
-      }
+        } catch {}
+        return originalGetLoader(cfg);
+      };
+      app.__revitget_getloader_patched = true;
+      log("Patched app._getLoader for blob files");
     } catch {}
+  }
 
-    add("dxf");
-
-    let i = 0;
-    let lastErr = null;
-    const tryNext = () => {
-      if (i >= candidates.length) return Promise.reject(lastErr || "加载失败");
-      const fmt = candidates[i++];
-      log("Trying DXF load with format=" + String(fmt));
-      return Promise.resolve(app.loadModel({ url: dxfUrl, format: fmt, fileName: "revitget.dxf" })).catch((e) => {
-        lastErr = e;
-        return tryNext();
-      });
-    };
-    return tryNext();
+  function loadDxf(app, url) {
+    ensureGetLoaderPatched(app);
+    log("Trying DXF load via patched _getLoader");
+    return Promise.resolve(app.loadModel({ url, fileName: "revitget.dxf" }));
   }
 
   function patch() {
@@ -134,7 +104,7 @@
                     log("Auto-loading DXF from blob URL: " + e.data.url);
                     setTimeout(() => {
                       try {
-                        loadDxfWithFallback(app, e.data.url)
+                        loadDxf(app, e.data.url)
                           .then(() => {
                             if (typeof URL !== "undefined" && URL.revokeObjectURL && String(e.data.url).startsWith("blob:")) {
                               const delay = typeof e.data.revokeAfterMs === "number" ? e.data.revokeAfterMs : 60000;
