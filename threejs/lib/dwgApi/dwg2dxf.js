@@ -1,5 +1,6 @@
 let __revitget_baseUrl = ""
 let __revitget_loaded = false
+let __revitget_quiet = false
 
 function setBaseUrl(url) {
     if (!url || typeof url !== "string") return
@@ -50,8 +51,24 @@ function postError(err) {
     self.postMessage({ status: 1, dxfData: msg, error: { message: msg } })
 }
 
+function setupQuietMode() {
+    try {
+        if (__revitget_quiet) return
+        __revitget_quiet = true
+        const params = new URLSearchParams(String(self.location && self.location.search ? self.location.search : ""))
+        const quiet = params.get("revitget_quiet")
+        if (quiet !== "1") return
+        const noop = function () {}
+        try { self.console && (self.console.log = noop) } catch {}
+        try { self.console && (self.console.info = noop) } catch {}
+        try { self.console && (self.console.debug = noop) } catch {}
+        try { self.console && (self.console.warn = noop) } catch {}
+    } catch {}
+}
+
 self.onmessage = function (event) {
     try {
+        setupQuietMode()
         const data = event.data
         if (data && typeof data === "object" && data.__revitget_init) {
             setBaseUrl(data.baseUrl || data.__revitget_baseUrl || "")

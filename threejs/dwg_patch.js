@@ -206,6 +206,96 @@
     return Promise.resolve(app.loadModel({ url, fileName: "revitget.dxf" }));
   }
 
+  function convertDwgBlobToDxfAndLoad(app, srcUrl, srcName) {
+    let worker = null;
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      try {
+        if (worker) worker.terminate();
+      } catch {}
+      worker = null;
+      try {
+        window.__revitget_dwg_manual_loading = false;
+      } catch {}
+    };
+
+    try {
+      window.__revitget_dwg_manual_loading = true;
+    } catch {}
+
+    const baseUrl = (() => {
+      try {
+        return new URL("./lib/dwgApi/", location.href).href;
+      } catch {
+        return "";
+      }
+    })();
+
+    const workerUrl = (() => {
+      try {
+        const u = String(new URL("./lib/dwgApi/dwg2dxf.js", location.href).href);
+        const sep = u.includes("?") ? "&" : "?";
+        return u + sep + "revitget_v=" + encodeURIComponent(REVITGET_VERSION) + "&revitget_manual=1&revitget_quiet=1";
+      } catch {
+        return "lib/dwgApi/dwg2dxf.js?revitget_v=" + encodeURIComponent(REVITGET_VERSION) + "&revitget_manual=1&revitget_quiet=1";
+      }
+    })();
+
+    return new Promise((resolve, reject) => {
+      try {
+        log("Manual DWG->DXF: " + workerUrl);
+        worker = new Worker(workerUrl);
+      } catch (e) {
+        cleanup();
+        reject(e);
+        return;
+      }
+
+      worker.addEventListener("message", (e) => {
+        try {
+          const data = e && e.data;
+          if (data && data.status === 0) {
+            Promise.resolve(loadDxf(app, data))
+              .then((doc) => {
+                cleanup();
+                resolve(doc);
+              })
+              .catch((err) => {
+                cleanup();
+                reject(err);
+              });
+            return;
+          }
+          if (data && data.status === 1) {
+            cleanup();
+            reject(new Error(String(data.dxfData || "DWG转换失败")));
+            return;
+          }
+        } catch (err) {
+          cleanup();
+          reject(err);
+        }
+      });
+
+      worker.addEventListener("error", (e) => {
+        cleanup();
+        reject(e && e.message ? new Error(e.message) : e);
+      });
+
+      try {
+        if (baseUrl) worker.postMessage({ __revitget_init: 1, baseUrl });
+      } catch {}
+      try {
+        worker.postMessage({ url: srcUrl, fileName: srcName || "" });
+      } catch (e) {
+        cleanup();
+        reject(e);
+      }
+    });
+  }
+
   function patch() {
     const root = window.webView ?? window;
     const app = tryGet(root, ["app"]) || tryGet(root, ["webView", "app"]);
@@ -231,9 +321,7 @@
             (fileName && /\.dwg$/i.test(fileName)) ||
             format === "dwg";
           if (isDwg && url && url.startsWith("blob:")) {
-            const waiter = createWaiter(url);
-            Promise.resolve(original(cfg, ...rest)).catch(() => {});
-            if (waiter) return waiter.promise;
+            return convertDwgBlobToDxfAndLoad(app, url, fileName);
           }
         } catch {}
         try {
