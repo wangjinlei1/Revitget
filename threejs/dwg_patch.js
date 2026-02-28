@@ -18,6 +18,8 @@
     } catch {}
   }
 
+  const REVITGET_VERSION = "74c6c7c";
+
   function ensureGetLoaderPatched(app) {
     try {
       if (!app || app.__revitget_getloader_patched) return;
@@ -82,6 +84,7 @@
     const dxfText = payload && typeof payload === "object" ? payload.dxfText : null;
 
     if (typeof dxfText === "string" && dxfText) {
+      log("Using dxfText length=" + dxfText.length);
       const pseudoUrl = "revitget_" + Date.now() + ".dxf";
       return Promise.resolve(app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText }));
     }
@@ -120,8 +123,15 @@
         try {
           const urlStr = String(scriptURL);
           if (/dwg2dxf\.js(\?|#|$)/i.test(urlStr)) {
-            log("Creating DWG Worker for: " + urlStr);
-            const worker = new originalWorker(scriptURL, options);
+            let workerUrl = scriptURL;
+            try {
+              if (!/revitget_v=/.test(urlStr)) {
+                const sep = urlStr.includes("?") ? "&" : "?";
+                workerUrl = urlStr + sep + "revitget_v=" + encodeURIComponent(REVITGET_VERSION);
+              }
+            } catch {}
+            log("Creating DWG Worker for: " + String(workerUrl));
+            const worker = new originalWorker(workerUrl, options);
             try {
               const baseUrl = new URL("./lib/dwgApi/", location.href).href;
               worker.postMessage({ __revitget_init: 1, baseUrl });
