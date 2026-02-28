@@ -76,6 +76,11 @@
     const view = resolveView(app);
     const renderer = resolveRenderer(app, view);
     try {
+      if (typeof window.__revitget_force_glb_light_bg === "boolean") {
+        window.__revitget_force_glb_light_bg = !!isLight;
+      }
+    } catch {}
+    try {
       setBg(document.documentElement, c);
     } catch {}
     try {
@@ -138,6 +143,13 @@
     try {
       const st = safeGetStorage();
       if (st) st.setItem(KEY, isLight ? "light" : "dark");
+    } catch {}
+    try {
+      const fn =
+        (app && (app.requestRender || app.invalidate || app.renderOnce || app.render)) ||
+        (view && (view.requestRender || view.invalidate || view.renderOnce || view.render)) ||
+        null;
+      if (typeof fn === "function") fn.call(app || view);
     } catch {}
   }
 
