@@ -18,12 +18,72 @@
     } catch {}
   }
 
-  const REVITGET_VERSION = "74c6c7c";
+  const REVITGET_VERSION = "dxftext_v2";
+
+  function ensureDxfLoaderPrototypePatched(app) {
+    try {
+      if (!app || app.__revitget_dxf_proto_patched) return;
+      const mp = app._loaderPlugin;
+      if (!mp || typeof mp.entries !== "function") return;
+
+      let DxfPlugin = null;
+      for (const [, Plugin] of mp.entries()) {
+        if (!Plugin) continue;
+        try {
+          if (Plugin.name === "DxfLoaderPlugin") {
+            DxfPlugin = Plugin;
+            break;
+          }
+        } catch {}
+        try {
+          if (Plugin.prototype && typeof Plugin.prototype.loadDxf === "function") {
+            DxfPlugin = Plugin;
+          }
+        } catch {}
+      }
+      if (!DxfPlugin || !DxfPlugin.prototype || typeof DxfPlugin.prototype.load !== "function") return;
+      if (DxfPlugin.prototype.__revitget_load_patched) {
+        app.__revitget_dxf_proto_patched = true;
+        return;
+      }
+
+      const origLoad = DxfPlugin.prototype.load;
+      DxfPlugin.prototype.load = function (cfg, progress) {
+        try {
+          if (cfg && typeof cfg.dxfText === "string" && cfg.dxfText) {
+            let txt = cfg.dxfText;
+            try {
+              txt = String(txt || "").replace(/\0/g, "");
+            } catch {}
+            return Promise.resolve(this.loadDxf(txt, cfg)).then((doc) => {
+              try {
+                doc.config = cfg;
+              } catch {}
+              return doc;
+            });
+          }
+        } catch (e) {
+          return Promise.reject(e);
+        }
+        try {
+          return Promise.resolve(origLoad.call(this, cfg, progress)).catch((e) => {
+            return Promise.reject(e);
+          });
+        } catch (e) {
+          return Promise.reject(e);
+        }
+      };
+      DxfPlugin.prototype.__revitget_load_patched = true;
+      app.__revitget_dxf_proto_patched = true;
+      log("Patched DxfLoaderPlugin.load for dxfText");
+    } catch {}
+  }
 
   function ensureGetLoaderPatched(app) {
     try {
       if (!app || app.__revitget_getloader_patched) return;
       if (typeof app._getLoader !== "function") return;
+      ensureDxfLoaderPrototypePatched(app);
       const originalGetLoader = app._getLoader.bind(app);
       app._getLoader = function (cfg) {
         try {
@@ -47,29 +107,6 @@
           }
         } catch {}
         const loader = originalGetLoader(cfg);
-        try {
-          if (loader && !loader.__revitget_loader_patched && typeof loader.load === "function" && typeof loader.loadDxf === "function") {
-            loader.__revitget_loader_patched = true;
-            const origLoad = loader.load.bind(loader);
-            loader.load = function (oe, progress) {
-              try {
-                if (oe && typeof oe.dxfText === "string" && oe.dxfText) {
-                  let txt = oe.dxfText;
-                  try {
-                    txt = String(txt || "").replace(/\0/g, "");
-                  } catch {}
-                  return Promise.resolve(this.loadDxf(txt, oe)).then((doc) => {
-                    try {
-                      doc.config = oe;
-                    } catch {}
-                    return doc;
-                  });
-                }
-              } catch {}
-              return origLoad(oe, progress);
-            };
-          }
-        } catch {}
         return loader;
       };
       app.__revitget_getloader_patched = true;
@@ -79,6 +116,7 @@
 
   function loadDxf(app, payload) {
     ensureGetLoaderPatched(app);
+    ensureDxfLoaderPrototypePatched(app);
     log("Trying DXF load via patched _getLoader");
     const url = payload && typeof payload === "object" ? payload.url : payload;
     const dxfText = payload && typeof payload === "object" ? payload.dxfText : null;
@@ -89,6 +127,18 @@
       return Promise.resolve(app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText }));
     }
 
+    try {
+      if (url && typeof url === "string" && url.startsWith("blob:")) {
+        log("Fetching blob DXF as text fallback");
+        return fetch(url)
+          .then((r) => r.text())
+          .then((t) => {
+            log("Fetched dxfText length=" + (t ? t.length : 0));
+            const pseudoUrl = "revitget_" + Date.now() + ".dxf";
+            return app.loadModel({ url: pseudoUrl, fileName: "revitget.dxf", dxfText: t });
+          });
+      }
+    } catch {}
     return Promise.resolve(app.loadModel({ url, fileName: "revitget.dxf" }));
   }
 
