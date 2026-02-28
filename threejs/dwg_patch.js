@@ -18,7 +18,27 @@
     } catch {}
   }
 
+  function normalizeDxfUrl(url) {
+    const u = String(url || "");
+    if (!u.startsWith("blob:")) return u;
+    if (/\.dxf(\?|#|$)/i.test(u)) return u;
+    return u + "#revitget.dxf";
+  }
+
   function loadDxfWithFallback(app, url) {
+    const dxfUrl = normalizeDxfUrl(url);
+
+    try {
+      log("Trying DXF load by URL extension");
+      return Promise.resolve(app.loadModel({ url: dxfUrl, fileName: "revitget.dxf" })).catch(() => {
+        return loadDxfWithFormatFallback(app, dxfUrl);
+      });
+    } catch (e) {
+      return loadDxfWithFormatFallback(app, dxfUrl);
+    }
+  }
+
+  function loadDxfWithFormatFallback(app, dxfUrl) {
     const candidates = [];
     const seen = new Set();
 
@@ -59,7 +79,7 @@
       if (i >= candidates.length) return Promise.reject(lastErr || "加载失败");
       const fmt = candidates[i++];
       log("Trying DXF load with format=" + String(fmt));
-      return Promise.resolve(app.loadModel({ url, format: fmt, fileName: "revitget.dxf" })).catch((e) => {
+      return Promise.resolve(app.loadModel({ url: dxfUrl, format: fmt, fileName: "revitget.dxf" })).catch((e) => {
         lastErr = e;
         return tryNext();
       });
