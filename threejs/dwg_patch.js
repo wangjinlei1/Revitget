@@ -48,9 +48,13 @@
       window.Worker = function (scriptURL, options) {
         try {
           const urlStr = String(scriptURL);
-          if (/dwg2dxf\.js$/i.test(urlStr)) {
+          if (/dwg2dxf\.js(\?|#|$)/i.test(urlStr)) {
             log("Creating DWG Worker for: " + urlStr);
             const worker = new originalWorker(scriptURL, options);
+            try {
+              const baseUrl = new URL("./lib/dwgApi/", location.href).href;
+              worker.postMessage({ __revitget_init: 1, baseUrl });
+            } catch {}
             worker.addEventListener("message", function (e) {
               try {
                 if (e.data && e.data.status === 0 && e.data.url) {
