@@ -60,6 +60,11 @@
             return original(cfg, ...rest);
           }
           
+          const isDwg =
+            (url && /\.dwg$/i.test(url)) ||
+            (fileName && /\.dwg$/i.test(fileName)) ||
+            format === "dwg";
+
           const isDwgDxf = 
             (url && /\.(dwg|dxf)$/i.test(url)) ||
             (fileName && /\.(dwg|dxf)$/i.test(fileName)) ||
@@ -74,7 +79,13 @@
               }
               return file;
             };
-            return original(patched, ...rest);
+            const p = original(patched, ...rest);
+            if (isDwg && url && url.startsWith("blob:") && (!format || format === "dwg")) {
+              return Promise.resolve(p).catch((e) => {
+                log("Suppressed DWG loadModel error: " + e);
+              });
+            }
+            return p;
           }
         }
       } catch (e) {
