@@ -5,6 +5,7 @@ let ACTION = null;
 let shiftPressed = false;
 let pointerActive = false;
 const originalLeftByControls = new WeakMap();
+const originalEnableRotateByControls = new WeakMap();
 
 function isActionEnum(a) {
   return a && typeof a === "object" && "ROTATE" in a;
@@ -12,7 +13,7 @@ function isActionEnum(a) {
 
 function isControlsCandidate(c) {
   if (!c || typeof c !== "object") return false;
-  const a = c?.constructor?.ACTION;
+  const a = c?.constructor?.ACTION || c?.constructor?.MOUSE || c?.MOUSE;
   if (!isActionEnum(a)) return false;
   const mb = c.mouseButtons;
   if (!mb || typeof mb !== "object") return false;
@@ -27,6 +28,27 @@ function getLeftKey(c) {
     if ("LEFT" in mb) return "LEFT";
   } catch {}
   return "left";
+}
+
+function ensureEnableRotate(c, on) {
+  try {
+    if (!c || typeof c !== "object") return;
+    if (!("enableRotate" in c)) return;
+    if (!originalEnableRotateByControls.has(c)) {
+      originalEnableRotateByControls.set(c, c.enableRotate);
+    }
+    c.enableRotate = !!on;
+  } catch {}
+}
+
+function restoreEnableRotate(c) {
+  try {
+    if (!c || typeof c !== "object") return;
+    if (!originalEnableRotateByControls.has(c)) return;
+    const v = originalEnableRotateByControls.get(c);
+    originalEnableRotateByControls.delete(c);
+    c.enableRotate = v;
+  } catch {}
 }
 
 function tryGet(obj, path) {
@@ -95,16 +117,16 @@ function resolveControls() {
   ].filter(Boolean);
 
   for (const c of directCandidates) {
-    if (isControlsCandidate(c)) return { controls: c, ACTION: c.constructor.ACTION };
+    if (isControlsCandidate(c)) return { controls: c, ACTION: c.constructor.ACTION || c.constructor.MOUSE || c.MOUSE };
   }
 
   const appView = tryGet(root, ["app", "view"]);
   const deep1 = deepFindControls(appView);
-  if (deep1) return { controls: deep1, ACTION: deep1.constructor.ACTION };
+  if (deep1) return { controls: deep1, ACTION: deep1.constructor.ACTION || deep1.constructor.MOUSE || deep1.MOUSE };
 
   const app = tryGet(root, ["app"]);
   const deep2 = deepFindControls(app);
-  if (deep2) return { controls: deep2, ACTION: deep2.constructor.ACTION };
+  if (deep2) return { controls: deep2, ACTION: deep2.constructor.ACTION || deep2.constructor.MOUSE || deep2.MOUSE };
 
   return null;
 }
@@ -133,6 +155,7 @@ function restoreLeft() {
   if (original == null) return;
   const k = getLeftKey(c);
   controls.mouseButtons[k] = original;
+  restoreEnableRotate(c);
 }
 
 function bindOnce() {
@@ -151,6 +174,7 @@ function bindOnce() {
         originalLeftByControls.set(c, c.mouseButtons[k]);
       }
       originalLeftAction = originalLeftByControls.get(c);
+      ensureEnableRotate(c, true);
       c.mouseButtons[k] = ACTION.ROTATE;
     },
     { passive: true }
@@ -189,6 +213,7 @@ function bindOnce() {
         originalLeftByControls.set(c, c.mouseButtons[k]);
       }
       originalLeftAction = originalLeftByControls.get(c);
+      ensureEnableRotate(c, true);
       c.mouseButtons[k] = ACTION.ROTATE;
     },
     { passive: true, capture: true }
