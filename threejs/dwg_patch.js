@@ -103,6 +103,22 @@
         return;
       }
 
+      try {
+        if (typeof DxfPlugin.prototype.loadDxf === "function" && !DxfPlugin.prototype.__revitget_loadDxf_patched) {
+          const origLoadDxf = DxfPlugin.prototype.loadDxf;
+          DxfPlugin.prototype.loadDxf = function (dxfText, cfg) {
+            try {
+              if (cfg && Array.isArray(cfg.fontsUrls) && cfg.fontsUrls.length) {
+                cfg = Object.assign({}, cfg, { fontsUrls: [] });
+              }
+            } catch {}
+            return origLoadDxf.call(this, dxfText, cfg);
+          };
+          DxfPlugin.prototype.__revitget_loadDxf_patched = true;
+          log("Patched DxfLoaderPlugin.loadDxf to disable fontsUrls");
+        }
+      } catch {}
+
       const origLoad = DxfPlugin.prototype.load;
       DxfPlugin.prototype.load = function (cfg, progress) {
         try {
@@ -110,6 +126,11 @@
             let txt = cfg.dxfText;
             try {
               txt = String(txt || "").replace(/\0/g, "");
+            } catch {}
+            try {
+              if (cfg && Array.isArray(cfg.fontsUrls) && cfg.fontsUrls.length) {
+                cfg = Object.assign({}, cfg, { fontsUrls: [] });
+              }
             } catch {}
             return Promise.resolve(this.loadDxf(txt, cfg))
               .then((doc) => {
