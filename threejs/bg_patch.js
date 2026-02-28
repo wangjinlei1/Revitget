@@ -195,24 +195,16 @@
     wrap.appendChild(btnDark);
     host.appendChild(wrap);
     try {
-      wrap.addEventListener(
-        "pointerdown",
-        (e) => {
-          try {
-            e.stopPropagation();
-          } catch {}
-        },
-        { capture: true }
-      );
-      wrap.addEventListener(
-        "click",
-        (e) => {
-          try {
-            e.stopPropagation();
-          } catch {}
-        },
-        { capture: true }
-      );
+      wrap.addEventListener("pointerdown", (e) => {
+        try {
+          if (e && e.target === wrap) e.stopPropagation();
+        } catch {}
+      });
+      wrap.addEventListener("click", (e) => {
+        try {
+          if (e && e.target === wrap) e.stopPropagation();
+        } catch {}
+      });
     } catch {}
 
     const mode = getInitialMode();
