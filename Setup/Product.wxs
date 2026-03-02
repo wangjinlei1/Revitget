@@ -21,7 +21,7 @@
               <!-- Revit 2018 -->
               <Directory Id="Revit2018" Name="2018">
                 <Component Id="Revit2018Addin" Guid="7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f">
-                  <File Id="Revit2018AddinFile" Source="..\Revitget\Revitget.addin" KeyPath="yes" />
+                  <File Id="Revit2018AddinFile" Source="..\Revitget\bin\Release2018\Revitget.2018.addin" KeyPath="yes" />
                 </Component>
                 <Directory Id="Revit2018LibDir" Name="Revitget">
                   <Component Id="Revit2018Lib" Guid="8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a">
@@ -35,7 +35,7 @@
               <!-- Revit 2020 -->
               <Directory Id="Revit2020" Name="2020">
                 <Component Id="Revit2020Addin" Guid="2c6f1b7c-7b74-4f53-9fd9-42f5c1c6c5b0">
-                  <File Id="Revit2020AddinFile" Source="..\Revitget\Revitget.addin" KeyPath="yes" />
+                  <File Id="Revit2020AddinFile" Source="..\Revitget\bin\Release2020\Revitget.addin" KeyPath="yes" />
                 </Component>
                 <Directory Id="Revit2020LibDir" Name="Revitget">
                   <Component Id="Revit2020Lib" Guid="d9a21463-2cf8-4e73-bc63-37a59e3b9b8e">

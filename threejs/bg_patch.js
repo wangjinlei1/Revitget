@@ -138,7 +138,9 @@
       if (renderer && renderer.domElement && renderer.domElement.style) {
         renderer.domElement.style.backgroundColor = c;
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[BG_PATCH] Error setting domElement style", e);
+    }
     try {
       if (!renderer && retryTimer == null) {
         retryTries = 0;

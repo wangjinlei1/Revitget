@@ -41,8 +41,9 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="Newtonsoft.Json">
-      <HintPath Condition="Exists('bin\\Release2018\\Newtonsoft.Json.dll')">bin\\Release2018\\Newtonsoft.Json.dll</HintPath>
-      <HintPath Condition="Exists('bin\\Release2020\\Newtonsoft.Json.dll')">bin\\Release2020\\Newtonsoft.Json.dll</HintPath>
+      <HintPath Condition="Exists('Newtonsoft.Json.dll')">Newtonsoft.Json.dll</HintPath>
+      <HintPath Condition="!Exists('Newtonsoft.Json.dll') AND Exists('$(ProgramFiles(x86))\\Microsoft Visual Studio\\Shared\\SDKs\\Azure\\v2.9\\bin\\plugins\\Diagnostics\\Newtonsoft.Json.dll')">$(ProgramFiles(x86))\\Microsoft Visual Studio\\Shared\\SDKs\\Azure\\v2.9\\bin\\plugins\\Diagnostics\\Newtonsoft.Json.dll</HintPath>
+      <HintPath Condition="!Exists('Newtonsoft.Json.dll') AND Exists('$(ProgramFiles)\\Microsoft Visual Studio\\Shared\\SDKs\\Azure\\v2.9\\bin\\plugins\\Diagnostics\\Newtonsoft.Json.dll')">$(ProgramFiles)\\Microsoft Visual Studio\\Shared\\SDKs\\Azure\\v2.9\\bin\\plugins\\Diagnostics\\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="RevitAPI">

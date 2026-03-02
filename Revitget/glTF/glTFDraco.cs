@@ -68,43 +68,6 @@ namespace Revitget.glTF
                num_obj_faces, num_positions, num_tex_coords, num_normals, options, ref length);
             bufferData.dracoData = piBuf;
             bufferData.dracoSize = length;
-
-
-            //拷贝一份，速度慢
-            //byte[] arrayBuf = new byte[length];
-            //Marshal.Copy(piBuf, arrayBuf, 0, length);
-            //FileStream stream = new FileStream(@"E:\draco\build\Debug\testNet.drc", System.IO.FileMode.Create);
-            //stream.Write(arrayBuf, 0, length);
-
-            //unsafe
-            //{
-            //    byte* memBytePtr = (byte*)piBuf.ToPointer();
-            //    //直接读取不开辟新的内存，加快速度     
-            //    using (FileStream f = new FileStream(@"E:\draco\build\Debug\testNet.drc", System.IO.FileMode.Create))
-            //    {
-            //        using (BinaryWriter writer = new BinaryWriter(f))
-            //        {
-            //            for (int i = 0; i < length; i++)
-            //            {
-            //                var a = *(byte*)memBytePtr;
-            //                Console.WriteLine(a);
-            //                writer.Write(a);
-            //                memBytePtr += 1;
-            //            }
-            //        }
-            //    }
-            //    Console.WriteLine("qeqqe");
-            //}
-            //unsafe
-            //{
-            //    byte* memBytePtr = (byte*)piBuf.ToPointer();
-            //    for (int i = 0; i < length; i++)
-            //    {
-            //        writer.Write(*(byte*)memBytePtr);
-            //        memBytePtr += 1;
-            //    }
-            //}
-            //return length;
         }
     }
 }

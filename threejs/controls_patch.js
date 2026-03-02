@@ -84,7 +84,8 @@ function deepFindControls(root, maxDepth = 6, maxNodes = 2500) {
     let keys = [];
     try {
       keys = Object.getOwnPropertyNames(value);
-    } catch {
+    } catch (e) {
+      console.warn("[CONTROLS_PATCH] Error getting property names", e);
       keys = [];
     }
 
@@ -248,7 +249,9 @@ function tick() {
     const k = getLeftKey(c);
     c.mouseButtons[k] = ACTION.ROTATE;
   }
-  requestAnimationFrame(tick);
+  if (!bound) {
+    requestAnimationFrame(tick);
+  }
 }
 requestAnimationFrame(tick);
 
@@ -267,6 +270,10 @@ const timer = setInterval(() => {
       c.mouseButtons[k] = ACTION.ROTATE;
     }
   }
-  if (!controls && tries > 300) clearInterval(timer);
+  if (bound && controls) {
+    clearInterval(timer);
+  } else if (!controls && tries > 300) {
+    clearInterval(timer);
+  }
 }, 250);
 

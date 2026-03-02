@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Autodesk.Revit.Attributes;
+﻿﻿﻿﻿﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Revitget.glTF;
@@ -79,12 +79,28 @@ namespace Revitget
                     }
 
                     var viewerUrl = "https://wangjinlei1.github.io/Revitget/index.html";
+                    
+                    var summary = $"网格数量：{context.MeshCount}\n材质数量：{context.MaterialCount}";
+                    if (context.MissingTextureCount > 0)
+                    {
+                        summary += $"\n贴图缺失：{context.MissingTextureCount} 个";
+                    }
+                    else
+                    {
+                        summary += "\n贴图状态：完整";
+                    }
+
                     var mainDialog = new TaskDialog("Revitget")
                     {
                         MainContent = "导出成功！用时：" + stopWatch.Elapsed.TotalSeconds.ToString("0.00") + " 秒\n\n" +
+                                      summary + "\n\n" +
                                       "文件路径：\n" + outputPath + "\n\n" +
                                       "在线查看链接：\n" + viewerUrl
                     };
+                    if (context.MissingTextureCount > 0)
+                    {
+                         mainDialog.ExpandedContent = "缺失贴图列表：\n" + string.Join("\n", context.MissingTextures);
+                    }
                     mainDialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "打开在线查看器");
                     if (!string.IsNullOrWhiteSpace(outputDir) && Directory.Exists(outputDir))
                     {
