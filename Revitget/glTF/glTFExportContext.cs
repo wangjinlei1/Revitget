@@ -330,36 +330,39 @@ namespace Revitget.glTF
 
 
 
-        private void WriteBinaryAndImages(BinaryWriter writer)
+        private void WriteBinaryAndImages(BinaryWriter writer, bool writeGeometry = true)
         {
-            foreach (var binData in allBinaryDatas)
+            if (writeGeometry)
             {
-                foreach (var index in binData.indexBuffer)
+                foreach (var binData in allBinaryDatas)
                 {
-                    if (binData.indexMax > 65535)
+                    foreach (var index in binData.indexBuffer)
                     {
-                        writer.Write((uint)index);
+                        if (binData.indexMax > 65535)
+                        {
+                            writer.Write((uint)index);
+                        }
+                        else
+                        {
+                            writer.Write((ushort)index);
+                        }
                     }
-                    else
+                    if (binData.indexAlign != null && binData.indexAlign != 0)
                     {
-                        writer.Write((ushort)index);
+                        writer.Write((ushort)binData.indexAlign);
                     }
-                }
-                if (binData.indexAlign != null && binData.indexAlign != 0)
-                {
-                    writer.Write((ushort)binData.indexAlign);
-                }
-                foreach (var coord in binData.vertexBuffer)
-                {
-                    writer.Write((float)coord);
-                }
-                foreach (var normal in binData.normalBuffer)
-                {
-                    writer.Write((float)normal);
-                }
-                foreach (var uv in binData.uvBuffer)
-                {
-                    writer.Write((float)uv);
+                    foreach (var coord in binData.vertexBuffer)
+                    {
+                        writer.Write((float)coord);
+                    }
+                    foreach (var normal in binData.normalBuffer)
+                    {
+                        writer.Write((float)normal);
+                    }
+                    foreach (var uv in binData.uvBuffer)
+                    {
+                        writer.Write((float)uv);
+                    }
                 }
             }
 
@@ -369,6 +372,7 @@ namespace Revitget.glTF
                 {
                     image.bufferView = glTF.bufferViews.Count;
 
+                    if (string.IsNullOrWhiteSpace(image.uri)) continue;
                     var bytes = File.ReadAllBytes(image.uri);
                     long curPos = writer.BaseStream.Position;
                     int pad = (int)((4 - (curPos % 4)) % 4);
@@ -459,7 +463,7 @@ namespace Revitget.glTF
                                     accessor.byteOffset = null;
                                 }
 
-                                WriteBinaryAndImages(writer);
+                                WriteBinaryAndImages(writer, false);
                             }
                             else
                             {
