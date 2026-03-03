@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Revitget 使用教程</title>
+    <style>
+      :root {
+        --bg: radial-gradient(1200px 700px at 20% 0%, rgba(99, 102, 241, 0.22), transparent 60%),
+          radial-gradient(900px 600px at 90% 20%, rgba(168, 85, 247, 0.18), transparent 55%),
+          linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(248, 250, 252, 0.78));
+        --card: rgba(255, 255, 255, 0.78);
+        --border: rgba(15, 23, 42, 0.08);
+        --text: rgba(15, 23, 42, 0.9);
+        --muted: rgba(15, 23, 42, 0.62);
+        --shadow: 0 20px 70px rgba(15, 23, 42, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 26px 22px 50px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(124, 58, 237, 0.92));
+        box-shadow: 0 16px 30px rgba(37, 99, 235, 0.22);
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      .brand p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.78);
+        color: rgba(15, 23, 42, 0.86);
+        text-decoration: none;
+        font-size: 13px;
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(37, 99, 235, 0.22);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      }
+
+      .btn.primary {
+        border-color: rgba(37, 99, 235, 0.22);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.98), rgba(124, 58, 237, 0.96));
+        color: white;
+        box-shadow: 0 18px 55px rgba(37, 99, 235, 0.22);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        box-shadow: var(--shadow);
+        padding: 18px 18px;
+      }
+
+      .title {
+        margin: 0 0 6px;
+        font-size: 26px;
+        letter-spacing: 0.2px;
+      }
+
+      .sub {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+
+      .pdf {
+        width: 100%;
+        height: 75vh;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.64);
+        display: none;
+      }
+
+      .pdf.open {
+        display: block;
+      }
+
+      .hint {
+        margin: 10px 0 0;
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.58);
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <h1>Revitget Web Viewer</h1>
+            <p>使用教程</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <a class="btn" href="./index.html">返回首页</a>
+          <a class="btn" href="https://github.com/wangjinlei1/Revitget" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="title">使用教程</h2>
+        <p class="sub">默认先提供下载/新标签打开，避免浏览器直接渲染 PDF 导致“打开很慢”。需要在线查看时再点“在线预览”。</p>
+        <div class="actions">
+          <a class="btn primary" href="./tutorial.pdf" download>下载 PDF</a>
+          <a class="btn" href="./tutorial.pdf" target="_blank" rel="noopener">新标签打开</a>
+          <button class="btn" type="button" id="toggle">在线预览</button>
+        </div>
+        <iframe class="pdf" id="pdf" title="Revitget 教程"></iframe>
+        <p class="hint">如果你希望始终在线预览，也可以把首页按钮直接指向 tutorial.pdf，但首次渲染会明显更慢。</p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var btn = document.getElementById("toggle");
+        var pdf = document.getElementById("pdf");
+        if (!btn || !pdf) return;
+        var open = false;
+        btn.addEventListener("click", function () {
+          open = !open;
+          if (open) {
+            if (!pdf.getAttribute("src")) pdf.setAttribute("src", "./tutorial.pdf");
+            pdf.classList.add("open");
+            btn.textContent = "收起预览";
+          } else {
+            pdf.classList.remove("open");
+            btn.textContent = "在线预览";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
