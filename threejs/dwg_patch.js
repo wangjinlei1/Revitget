@@ -379,6 +379,9 @@
             (url && /\.dwg(\?|#|$)/i.test(url)) ||
             (fileName && /\.dwg$/i.test(fileName)) ||
             format === "dwg";
+          if (isDwg) {
+            ensureWorkerHook();
+          }
           if (isDwg && url && url.startsWith("blob:")) {
             return convertDwgBlobToDxfAndLoad(app, url, fileName);
           }
@@ -413,13 +416,21 @@
     return true;
   }
 
-  function hookWorker() {
+  let __revitget_worker_hooked = false;
+  function ensureWorkerHook() {
     try {
+      if (__revitget_worker_hooked) return;
+      if (typeof window.Worker !== "function") return;
       const originalWorker = window.Worker;
       window.Worker = function (scriptURL, options) {
         try {
           const urlStr = String(scriptURL);
           if (/dwg2dxf\.js(\?|#|$)/i.test(urlStr)) {
+            try {
+              const u = new URL(urlStr, location.href);
+              if (u.origin !== location.origin) return new originalWorker(scriptURL, options);
+              if (!/\/lib\/dwgApi\/dwg2dxf\.js$/i.test(u.pathname)) return new originalWorker(scriptURL, options);
+            } catch {}
             let workerUrl = scriptURL;
             try {
               if (!/revitget_v=/.test(urlStr)) {
@@ -526,7 +537,8 @@
       };
       window.Worker.prototype = originalWorker.prototype;
       window.Worker.prototype.constructor = window.Worker;
-      log("Hooked global Worker constructor");
+      __revitget_worker_hooked = true;
+      log("Hooked global Worker constructor (dwg only)");
     } catch (e) {
       log("Error setting up Worker hook: " + e);
     }
@@ -537,6 +549,4 @@
     tries += 1;
     if (patch() || tries > 300) clearInterval(timer);
   }, 200);
-
-  hookWorker();
 })();
