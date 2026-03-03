@@ -43,6 +43,11 @@ Setup/tools/
 
 Revitget/Newtonsoft.Json.dll
 
+UpgradeLog*.htm
+UpgradeLog*.html
+nul
+nul.*
+
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
