@@ -38,7 +38,7 @@ namespace Revitget.glTF
                 tex_coords_quantization_bits = 10;
                 normals_quantization_bits = 8;
                 generic_quantization_bits = 8;
-                compression_level = 7;
+                compression_level = 9;
             }
             public int pos_quantization_bits;
             public int tex_coords_quantization_bits;
@@ -63,11 +63,36 @@ namespace Revitget.glTF
             int num_normals = normals.Length / 3;
             int num_tex_coords = uvs.Length / 2;
 
+            if (positions.Length % 3 != 0 || indexs.Length % 3 != 0 || num_obj_faces <= 0 || num_positions <= 0)
+            {
+                bufferData.dracoData = IntPtr.Zero;
+                bufferData.dracoSize = 0;
+                return;
+            }
+            if (normals.Length % 3 != 0 || num_normals != num_positions)
+            {
+                normals = Array.Empty<float>();
+                num_normals = 0;
+            }
+            if (uvs.Length % 2 != 0 || num_tex_coords != num_positions)
+            {
+                uvs = Array.Empty<float>();
+                num_tex_coords = 0;
+            }
 
-            var piBuf = dracoEncoder(positions, uvs, normals, indexs,
-               num_obj_faces, num_positions, num_tex_coords, num_normals, options, ref length);
-            bufferData.dracoData = piBuf;
-            bufferData.dracoSize = length;
+
+            try
+            {
+                var piBuf = dracoEncoder(positions, uvs, normals, indexs,
+                   num_obj_faces, num_positions, num_tex_coords, num_normals, options, ref length);
+                bufferData.dracoData = piBuf;
+                bufferData.dracoSize = length;
+            }
+            catch
+            {
+                bufferData.dracoData = IntPtr.Zero;
+                bufferData.dracoSize = 0;
+            }
         }
     }
 }

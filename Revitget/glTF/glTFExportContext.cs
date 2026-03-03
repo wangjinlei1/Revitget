@@ -1197,20 +1197,44 @@ namespace Revitget.glTF
                     currentGeometry.vertexBuffer.Add((float)point.Z);
                 }
                 IList<UV> uvs = node.GetUVs();
-                foreach (UV uv in uvs)
+                if (uvs != null && uvs.Count > 0)
                 {
-                    currentGeometry.uvBuffer.Add((float)uv.U);
-                    currentGeometry.uvBuffer.Add((float)uv.V);
+                    int want = node.NumberOfPoints;
+                    int take = Math.Min(want, uvs.Count);
+                    for (int i = 0; i < take; i++)
+                    {
+                        var uv = uvs[i];
+                        currentGeometry.uvBuffer.Add((float)uv.U);
+                        currentGeometry.uvBuffer.Add((float)uv.V);
+                    }
+                    for (int i = take; i < want; i++)
+                    {
+                        currentGeometry.uvBuffer.Add(0f);
+                        currentGeometry.uvBuffer.Add(0f);
+                    }
                 }
                 IList<XYZ> normals = node.GetNormals();
-                if (normals != null && normals.Count() > 0)
+                if (normals != null && normals.Count > 0)
                 {
-                    var normal = normals[0];
-                    for (int i = 0; i < node.NumberOfPoints; i++)
+                    if (normals.Count == node.NumberOfPoints)
                     {
-                        currentGeometry.normalBuffer.Add((float)normal.X);
-                        currentGeometry.normalBuffer.Add((float)normal.Y);
-                        currentGeometry.normalBuffer.Add((float)normal.Z);
+                        for (int i = 0; i < node.NumberOfPoints; i++)
+                        {
+                            var normal = normals[i];
+                            currentGeometry.normalBuffer.Add((float)normal.X);
+                            currentGeometry.normalBuffer.Add((float)normal.Y);
+                            currentGeometry.normalBuffer.Add((float)normal.Z);
+                        }
+                    }
+                    else
+                    {
+                        var normal = normals[0];
+                        for (int i = 0; i < node.NumberOfPoints; i++)
+                        {
+                            currentGeometry.normalBuffer.Add((float)normal.X);
+                            currentGeometry.normalBuffer.Add((float)normal.Y);
+                            currentGeometry.normalBuffer.Add((float)normal.Z);
+                        }
                     }
                 }
                 foreach (PolymeshFacet facet in node.GetFacets())
