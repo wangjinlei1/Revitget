@@ -302,6 +302,22 @@
         background: rgba(255, 255, 255, 0.75);
       }
 
+      .preview-link {
+        display: grid;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .preview-link:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, 0.35);
+        outline-offset: -3px;
+      }
+
+      .preview-link:hover .preview-hero {
+        border-color: rgba(37, 99, 235, 0.22);
+      }
+
       .dots {
         display: inline-flex;
         gap: 6px;
@@ -621,23 +637,22 @@
               </div>
             </div>
             <div>
-              <div class="preview" aria-hidden="true">
+              <div class="preview">
                 <div class="preview-bar">
                   <div class="dots">
                     <span class="dot r"></span>
                     <span class="dot y"></span>
                     <span class="dot g"></span>
                   </div>
-                  <div class="url">Revitget / threejs / index.html</div>
                   <div class="badge">Viewer</div>
                 </div>
-                <div class="preview-body">
+                <a class="preview-body preview-link" href="./threejs/index.html" aria-label="进入查看器">
                   <div class="preview-hero"></div>
                   <div class="preview-grid">
                     <div class="preview-tile"><b>加载</b><span>拖拽或选择文件</span></div>
                     <div class="preview-tile"><b>浏览</b><span>旋转、缩放、漫游</span></div>
                   </div>
-                </div>
+                </a>
               </div>
             </div>
           </div>
