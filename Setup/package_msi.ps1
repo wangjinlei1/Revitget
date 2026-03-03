@@ -97,12 +97,17 @@ $args = @{
   SkipBuild = $SkipBuild
   SkipMsi = $SkipMsi
   WixVersion = $WixVersion
-  ProductVersion = $ProductVersion
-  MsiName = $MsiName
 }
 
 if ($resolvedWixDir) {
   $args["WixDir"] = $resolvedWixDir
+}
+
+if ($PSBoundParameters.ContainsKey("ProductVersion")) {
+  $args["ProductVersion"] = $ProductVersion
+}
+if ($PSBoundParameters.ContainsKey("MsiName")) {
+  $args["MsiName"] = $MsiName
 }
 
 Log ("Run: build_msi.ps1 MinYear={0} MaxYear={1} PreferYear={2} SkipBuild={3} SkipMsi={4} ProductVersion={5} MsiName={6}" -f $MinYear, $MaxYear, $PreferYear, $SkipBuild, $SkipMsi, $ProductVersion, $MsiName)

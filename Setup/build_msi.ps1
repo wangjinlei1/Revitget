@@ -316,6 +316,17 @@ if (-not $SkipMsi) {
   $years = Select-RevitYears -MinYear $MinYear -MaxYear $MaxYear -PreferYear $PreferYear -Overrides $overrides
   Ensure-Binaries -Years $years
 
+  $hasUserMsiName = $PSBoundParameters.ContainsKey("MsiName")
+  if (-not $hasUserMsiName) {
+    try {
+      $min = ($years | Measure-Object -Minimum).Minimum
+      $max = ($years | Measure-Object -Maximum).Maximum
+      if ($min -and $max) {
+        $MsiName = ("RevitgetSetup_{0}-{1}.msi" -f $min, $max)
+      }
+    } catch {}
+  }
+
   $wix = Ensure-Wix
   $objDir = Join-Path $PSScriptRoot "obj"
   $binDir = Join-Path $PSScriptRoot "bin"
@@ -326,6 +337,9 @@ if (-not $SkipMsi) {
   $wxsPath = Join-Path $objDir "Product.generated.wxs"
   $wixobjPath = Join-Path $objDir "Product.wixobj"
   $msiPath = Join-Path $binDir $MsiName
+
+  Write-Host ("Packaging Revit years: " + (($years | Sort-Object) -join ", "))
+  Write-Host ("MSI: " + $msiPath)
 
   $wxsContent = New-WxsContent -Years $years -ProductVersion $ProductVersion
   Set-Content -Path $wxsPath -Value $wxsContent -Encoding UTF8
